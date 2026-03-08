@@ -18,5 +18,6 @@ class User(Base):
     role = Column(Enum(UserRole), default=UserRole.user)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    phone = Column(String(20), nullable=True)
 
     children = relationship("Child", back_populates="parent", cascade="all, delete-orphan")

@@ -29,3 +29,6 @@ api.interceptors.response.use(
 )
 
 export default api
+
+export const updateMe = (data: { name?: string; email?: string; phone?: string; password?: string }) =>
+  api.put('/auth/me', data)

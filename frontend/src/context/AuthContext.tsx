@@ -6,6 +6,7 @@ interface User {
   id: number
   email: string
   name: string
+  phone?: string
   role: string
 }
 
@@ -15,6 +16,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>
   register: (email: string, name: string, password: string) => Promise<void>
   logout: () => void
+  updateUser: (data: { name?: string; email?: string; phone?: string; password?: string }) => Promise<void>
   loading: boolean
 }
 
@@ -59,8 +61,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }
 
+  const updateUser = async (data: { name?: string; email?: string; phone?: string; password?: string }) => {
+    const res = await api.put('/auth/me', data)
+    setUser(res.data)
+  }
+
   return (
-    <AuthContext.Provider value={{ user, token, login, register, logout, loading }}>
+    <AuthContext.Provider value={{ user, token, login, register, logout, updateUser, loading }}>
       {children}
     </AuthContext.Provider>
   )
