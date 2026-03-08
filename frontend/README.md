@@ -1,6 +1,6 @@
 # 🧩 AutiCare — Autism Development Tracker
 
-<div align="center">
+
 
 **A full-stack web application for tracking the daily behavioral development of children with Autism Spectrum Disorder (ASD).**
 
@@ -109,8 +109,7 @@ autism-tracker/
 │   ├── index.css
 │   ├── vite.config.ts
 │   └── package.json
-├── docs/
-│   └── AutiCare_AI_Agent_Planning.pdf
+│ 
 ├── docker-compose.yml
 └── README.md
 ```
@@ -306,5 +305,4 @@ AutiCare is **not** a medical application. It does not provide clinical diagnose
 
 ---
 
-<div align="center">
 </div>
