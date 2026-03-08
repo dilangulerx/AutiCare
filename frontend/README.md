@@ -133,11 +133,6 @@ cd autism-tracker
 
 ### 2. Create environment file
 
-```bash
-cp .env.example .env
-```
-
-Edit `.env` with your own values (see [Environment Variables](#-environment-variables)).
 
 ### 3. Start backend & database
 
