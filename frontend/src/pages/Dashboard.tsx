@@ -649,7 +649,7 @@ export default function Dashboard() {
                             <h3 style={{ fontSize: 18, fontWeight: 700, color: '#0D4F4F', marginBottom: 4 }}>
                               {new Date(selectedReport.week_start_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })} Haftası
                             </h3>
-                            <p style={{ color: '#9CA3AF', fontSize: 13, marginBottom: 20 }}>{selectedChild.name} için haftalık analiz</p>
+                            <p style={{ color: '#9CA3AF', fontSize: 13, marginBottom: 20 }}>CrewAI · 4 Ajan · {new Date(selectedReport.week_start_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                             <div 
                               style={{ color: '#374151', fontSize: 14, lineHeight: 1.8, marginBottom: 24 }}
                               dangerouslySetInnerHTML={{ __html: '<p>' + selectedReport.report_text
