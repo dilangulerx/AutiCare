@@ -1,0 +1,24 @@
+- task_name: analyze_logs_task
+  description: Çocuğun günlük davranış loglarını analiz et ve önemli trendleri belirle.
+  expected_output: Belirlenen trendler, kalıplar ve önemli gözlemlerin özeti.
+  agent: BehavioralAnalystAgent
+
+- task_name: detect_anomalies_task
+  description: Davranışsal verilerdeki anormal sapmaları tespit et.
+  expected_output: Tespit edilen anomaliler ve potansiyel nedenleri.
+  agent: AnomalyDetectorAgent
+
+- task_name: generate_recommendations_task
+  description: Davranışsal analiz sonuçlarına dayanarak kişiselleştirilmiş aktivite ve terapi önerileri sun.
+  expected_output: Çocuğa özel aktivite ve terapi önerilerinin listesi.
+  agent: TherapyAdvisorAgent
+
+- task_name: compile_weekly_report_task
+  description: Haftalık davranışsal raporu Türkçe, sıcak ve destekleyici bir dille derle.
+  expected_output: Kapsamlı haftalık davranışsal rapor metni.
+  agent: ReportGeneratorAgent
+
+- task_name: handle_chat_query_task
+  description: Ebeveynin sorusunu yanıtla.
+  expected_output: Ebeveynin sorusuna verilen doğal dilde Türkçe yanıt.
+  agent: ConversationalAgent

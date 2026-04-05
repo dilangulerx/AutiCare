@@ -9,8 +9,9 @@ import { getReports, generateReport } from '../api/reports'
 import type { WeeklyReport } from '../api/reports'
 import { getReminders, createReminder, deleteReminder } from '../api/reminders'
 import type { Reminder } from '../api/reminders'
+import { sendChatMessage, checkAnomaly } from '../api/ai'
 
-type ActiveSection = 'overview' | 'daily-log' | 'reports' | 'reminders' | 'settings'
+type ActiveSection = 'overview' | 'daily-log' | 'reports' | 'reminders' | 'settings' | 'chat'
 
 export default function Dashboard() {
   const { user, logout, updateUser } = useAuth()
@@ -28,7 +29,7 @@ export default function Dashboard() {
   const [newChildBirth, setNewChildBirth] = useState('')
   const [newChildNotes, setNewChildNotes] = useState('')
 
-  const [logForm, setLogForm] = useState({ eye_contact: 3, aggression_level: 1, communication_score: 3, sleep_hours: 8, notes: '' })
+  const [logForm, setLogForm] = useState({ eye_contact: 3, aggression_level: 1, communication_score: 3, sleep_hours: 8, notes: '', date: new Date().toISOString().split('T')[0] })
   const [logSaving, setLogSaving] = useState(false)
   const [logSuccess, setLogSuccess] = useState(false)
 
@@ -43,6 +44,12 @@ export default function Dashboard() {
   const [settingsSaving, setSettingsSaving] = useState(false)
   const [settingsSuccess, setSettingsSuccess] = useState('')
   const [settingsError, setSettingsError] = useState('')
+
+  const [chatMessages, setChatMessages] = useState<{role: 'user' | 'ai', text: string}[]>([])
+  const [chatInput, setChatInput] = useState('')
+  const [chatLoading, setChatLoading] = useState(false)
+
+  const [anomaly, setAnomaly] = useState<{has_anomaly: boolean, message: string} | null>(null)
 
   useEffect(() => { loadChildren() }, [])
 
@@ -72,6 +79,10 @@ export default function Dashboard() {
       setReports(reportsRes.data)
       setReminders(remindersRes.data)
       if (reportsRes.data.length > 0) setSelectedReport(reportsRes.data[0])
+      
+          // 
+    const anomalyRes = await checkAnomaly(childId)
+    setAnomaly(anomalyRes.data)
     } catch (e) { console.error(e) }
   }
 
@@ -122,6 +133,19 @@ export default function Dashboard() {
     finally { setReminderSaving(false) }
   }
 
+  const handleDeleteChild = async (id: number) => {
+    if (!confirm('Bu çocuğu silmek istediğinizden emin misiniz? Tüm kayıtlar silinecek!')) return
+    try {
+      const { deleteChild } = await import('../api/children')
+      await deleteChild(id)
+      const updated = children.filter(c => c.id !== id)
+      setChildren(updated)
+      setSelectedChild(updated.length > 0 ? updated[0] : null)
+    } catch (e) { console.error(e) }
+  }
+
+
+
   const handleDeleteReminder = async (id: number) => {
     try {
       await deleteReminder(id)
@@ -151,6 +175,22 @@ export default function Dashboard() {
       setSettingsError('Güncelleme sırasında hata oluştu.')
     } finally {
       setSettingsSaving(false)
+    }
+  }
+
+  const handleSendChat = async () => {
+    if (!selectedChild || !chatInput.trim()) return
+    const userMessage = chatInput.trim()
+    setChatInput('')
+    setChatMessages(prev => [...prev, { role: 'user', text: userMessage }])
+    setChatLoading(true)
+    try {
+      const res = await sendChatMessage(selectedChild.id, userMessage)
+      setChatMessages(prev => [...prev, { role: 'ai', text: res.data.response }])
+    } catch (e) {
+      setChatMessages(prev => [...prev, { role: 'ai', text: 'Bir hata oluştu, tekrar deneyin.' }])
+    } finally {
+      setChatLoading(false)
     }
   }
 
@@ -212,22 +252,32 @@ export default function Dashboard() {
           </p>
 
           {children.map(child => (
-            <div key={child.id} onClick={() => setSelectedChild(child)} style={{
+            <div key={child.id} style={{
               display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
               borderRadius: 12, marginBottom: 4, cursor: 'pointer', transition: 'all 0.2s',
               background: selectedChild?.id === child.id ? 'rgba(255,255,255,0.15)' : 'transparent',
-              border: selectedChild?.id === child.id ? '1px solid rgba(255,255,255,0.2)' : '1px solid transparent'
-            }}>
+              border: selectedChild?.id === child.id ? '1px solid rgba(255,255,255,0.2)' : '1px solid transparent',
+              position: 'relative'
+          }}>
+            <div onClick={() => setSelectedChild(child)} style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
               <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg, #7DD3D8, #A5F3FC)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
-                👶
+               👶
               </div>
-              <div>
-                <p style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>{child.name}</p>
-                <p style={{ color: 'rgba(207,250,254,0.6)', fontSize: 11 }}>{getAge(child.birth_date)} yaşında</p>
-              </div>
-            </div>
-          ))}
-
+            <div>
+              <p style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>{child.name}</p>
+              <p style={{ color: 'rgba(207,250,254,0.6)', fontSize: 11 }}>{getAge(child.birth_date)} yaşında</p>
+           </div>
+        </div>
+       <button
+          onClick={(e) => { e.stopPropagation(); handleDeleteChild(child.id) }}
+          style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, padding: '3px 7px', color: 'rgba(255,255,255,0.45)', fontSize: 14, cursor: 'pointer', lineHeight: 1, flexShrink: 0 }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.3)'; e.currentTarget.style.color = 'white' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = 'rgba(255,255,255,0.45)' }}
+       >
+         ×
+       </button>
+     </div>
+   ))}
           <button onClick={() => setShowAddChild(true)} style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1px dashed rgba(255,255,255,0.25)', background: 'transparent', color: 'rgba(207,250,254,0.7)', fontSize: 13, cursor: 'pointer', marginTop: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 18 }}>+</span> Çocuk Ekle
           </button>
@@ -241,6 +291,7 @@ export default function Dashboard() {
               { id: 'daily-log', icon: '📝', label: 'Günlük Kayıt' },
               { id: 'reports', icon: '🤖', label: 'AI Raporlar' },
               { id: 'reminders', icon: '🔔', label: 'Hatırlatıcılar' },
+              { id: 'chat', icon: '💬', label: 'AI Asistan' },
               { id: 'settings', icon: '⚙️', label: 'Ayarlar' },
             ].map(item => (
               <button key={item.id} onClick={() => setActiveSection(item.id as ActiveSection)} style={{
@@ -349,7 +400,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* ─── DİĞER SAYFALAR ─── */}
+        {/* ─── DIGER SAYFALAR ─── */}
         {activeSection !== 'settings' && (
           <>
             {!selectedChild ? (
@@ -363,7 +414,7 @@ export default function Dashboard() {
               </div>
             ) : (
               <>
-                {/* ─── GENEL BAKIŞ ─── */}
+                {/* ─── GENEL BAKIS ─── */}
                 {activeSection === 'overview' && (
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
@@ -397,6 +448,32 @@ export default function Dashboard() {
                         </div>
                       ))}
                     </div>
+
+                    {anomaly && anomaly.has_anomaly && (
+                    <div style={{
+                      background: 'linear-gradient(135deg, #FEF2F2, #FFF5F5)',
+                      border: '1px solid #FECACA',
+                      borderLeft: '4px solid #EF4444',
+                      borderRadius: 16, padding: '20px 24px',
+                      marginBottom: 24,
+                      display: 'flex', alignItems: 'flex-start', gap: 16
+                    }}>
+                    <div style={{ fontSize: 28, flexShrink: 0 }}>⚠️</div>
+                     <div>
+                      <h4 style={{ color: '#DC2626', fontWeight: 700, fontSize: 15, marginBottom: 6 }}>
+                       Anomali Tespit Edildi!
+                      </h4>
+                      <p style={{ color: '#7F1D1D', fontSize: 13, lineHeight: 1.7 }}>
+                       {anomaly.message}
+                      </p>
+                      <button
+                       onClick={() => setActiveSection('chat')}
+                       style={{ marginTop: 12, background: '#EF4444', border: 'none', borderRadius: 8, padding: '8px 16px', color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                       💬 AI Asistan'a Sor →
+                      </button>
+                     </div>
+                    </div>
+                    )}
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
                       <div style={{ background: 'white', borderRadius: 16, padding: '24px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
@@ -481,6 +558,18 @@ export default function Dashboard() {
                           </div>
                         </div>
                       ))}
+                      <div style={{ marginBottom: 24 }}>
+                        <label style={{ fontWeight: 600, color: '#0D4F4F', fontSize: 14, display: 'block', marginBottom: 8 }}>📅 Tarih</label>
+                         <input
+                           type="date"
+                           value={logForm.date}
+                           max={new Date().toISOString().split('T')[0]}
+                           onChange={e => setLogForm({ ...logForm, date: e.target.value })}
+                           style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '2px solid #E5E7EB', fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+                           onFocus={e => e.target.style.borderColor = '#0891B2'}
+                           onBlur={e => e.target.style.borderColor = '#E5E7EB'}
+                          />
+                        </div>
 
                       <div style={{ marginBottom: 24 }}>
                         <label style={{ fontWeight: 600, color: '#0D4F4F', fontSize: 14, display: 'block', marginBottom: 8 }}>😴 Uyku Süresi</label>
@@ -549,7 +638,7 @@ export default function Dashboard() {
                                 {new Date(report.week_start_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })} haftası
                               </p>
                               <p style={{ color: '#9CA3AF', fontSize: 11, marginTop: 4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                                {report.report_text?.substring(0, 80)}...
+                                {report.report_text?.replace(/\*\*(.+?)\*\*/g, '$1').substring(0, 80)}...
                               </p>
                             </div>
                           ))}
@@ -561,21 +650,14 @@ export default function Dashboard() {
                               {new Date(selectedReport.week_start_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })} Haftası
                             </h3>
                             <p style={{ color: '#9CA3AF', fontSize: 13, marginBottom: 20 }}>{selectedChild.name} için haftalık analiz</p>
-                            <p style={{ color: '#374151', fontSize: 14, lineHeight: 1.8, marginBottom: 24 }}>{selectedReport.report_text}</p>
-
-                            {selectedReport.key_insights && (
-                              <div style={{ background: '#F0FDFC', borderRadius: 14, padding: '20px', marginBottom: 20, border: '1px solid #A5F3FC' }}>
-                                <h4 style={{ fontWeight: 700, color: '#0D4F4F', marginBottom: 14, fontSize: 14 }}>💡 Önemli Bulgular</h4>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-                                  {Object.entries(selectedReport.key_insights).map(([key, value]) => (
-                                    <div key={key} style={{ background: 'white', borderRadius: 10, padding: '12px' }}>
-                                      <p style={{ fontSize: 10, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>{key.replace(/_/g, ' ')}</p>
-                                      <p style={{ fontSize: 12, color: '#0D4F4F', fontWeight: 600 }}>{value as string}</p>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
+                            <div 
+                              style={{ color: '#374151', fontSize: 14, lineHeight: 1.8, marginBottom: 24 }}
+                              dangerouslySetInnerHTML={{ __html: '<p>' + selectedReport.report_text
+                                .replace(/\*\*(.+?)\*\*/g, '<strong style="color:#0D4F4F">$1</strong>')
+                                .replace(/\n\n/g, '</p><p style="margin-bottom:12px">')
+                                .replace(/\n/g, '<br/>') + '</p>'
+                              }}
+                            />
 
                             {selectedReport.recommendations && (
                               <div>
@@ -595,6 +677,91 @@ export default function Dashboard() {
                   </div>
                 )}
 
+                {/* ─── AI ASISTAN ─── */}
+                {activeSection === 'chat' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 120px)' }}>
+                    <div style={{ marginBottom: 24 }}>
+                      <h1 style={{ fontSize: 24, fontWeight: 800, color: '#0D4F4F', marginBottom: 4 }}>💬 AI Asistan</h1>
+                      <p style={{ color: '#6B7280', fontSize: 14 }}>{selectedChild.name} hakkında sorularınızı sorun</p>
+                    </div>
+
+                  {/* Mesajlar */}
+                  <div style={{ flex: 1, overflowY: 'auto', background: 'white', borderRadius: 20, padding: '24px', boxShadow: '0 2px 16px rgba(0,0,0,0.06)', marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    {chatMessages.length === 0 && (
+                      <div style={{ textAlign: 'center', marginTop: 60 }}>
+                        <div style={{ fontSize: 56, marginBottom: 16 }}>🤖</div>
+                        <h3 style={{ color: '#0D4F4F', fontWeight: 700, marginBottom: 8 }}>AI Asistanınız hazır!</h3>
+                        <p style={{ color: '#6B7280', fontSize: 14 }}>{selectedChild.name} hakkında her şeyi sorabilirsiniz</p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 24, maxWidth: 400, margin: '24px auto 0' }}>
+                          {[
+                            `${selectedChild.name}'in bu haftaki gelişimi nasıl?`,
+                             'Göz teması geliştirmek için ne yapabilirim?',
+                             'Uyku düzeni normal mi?'
+                            ].map(q => (
+                              <button key={q} onClick={() => setChatInput(q)}
+                                style={{ background: '#F0FDFC', border: '1px solid #A5F3FC', borderRadius: 10, padding: '10px 16px', color: '#0891B2', fontSize: 13, cursor: 'pointer', textAlign: 'left' }}>
+                                {q}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                       )}
+
+                      {chatMessages.map((msg, i) => (
+                        <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                          {msg.role === 'ai' && (
+                            <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, #0D4F4F, #0891B2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0, marginRight: 10 }}>
+                              🤖
+                            </div>
+                          )}
+                         <div style={{
+                           maxWidth: '70%', padding: '12px 16px', borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                           background: msg.role === 'user' ? 'linear-gradient(135deg, #0891B2, #5BB8D4)' : '#F8FAFC',
+                           color: msg.role === 'user' ? 'white' : '#374151',
+                           fontSize: 14, lineHeight: 1.6,
+                           boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+                          }}>
+                          {msg.role === 'user' ? msg.text : (
+                          <div dangerouslySetInnerHTML={{ __html: msg.text
+                          .replace(/\*\*(.+?)\*\*/g, '<strong style="color:#0D4F4F">$1</strong>')
+                          .replace(/\n\n/g, '</p><p style="margin-bottom:8px">')
+                          .replace(/\n/g, '<br/>')
+                          .replace(/^(\d+)\.\s/gm, '<br/><strong style="color:#0891B2">$1.</strong> ')
+                          }} />
+                         )}
+                         </div>
+                         </div>
+                       ))}
+
+                       {chatLoading && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, #0D4F4F, #0891B2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🤖</div>
+                          <div style={{ background: '#F8FAFC', borderRadius: '18px 18px 18px 4px', padding: '12px 16px', color: '#9CA3AF', fontSize: 14 }}>
+                            ⏳ Düşünüyor...
+                          </div>
+                        </div>
+                       )}
+                     </div>
+
+                     {/* Input */}
+                     <div style={{ display: 'flex', gap: 12 }}>
+                      <input
+                        value={chatInput}
+                        onChange={e => setChatInput(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSendChat()}
+                        placeholder={`${selectedChild.name} hakkında bir şey sorun...`}
+                        style={{ flex: 1, padding: '14px 18px', borderRadius: 14, border: '2px solid #E5E7EB', fontSize: 14, outline: 'none', fontFamily: 'inherit' }}
+                        onFocus={e => e.target.style.borderColor = '#0891B2'}
+                        onBlur={e => e.target.style.borderColor = '#E5E7EB'}
+                      />
+                      <button onClick={handleSendChat} disabled={chatLoading || !chatInput.trim()}
+                        style={{ padding: '14px 24px', borderRadius: 14, border: 'none', background: chatLoading ? '#9CA3AF' : 'linear-gradient(135deg, #0891B2, #5BB8D4)', color: 'white', fontWeight: 700, cursor: chatLoading ? 'not-allowed' : 'pointer', fontSize: 14, boxShadow: '0 4px 14px rgba(8,145,178,0.3)' }}>
+                         Gönder →
+                      </button>
+                    </div>
+                 </div>
+                )}
+                 
                 {/* ─── HATIRLATICLAR ─── */}
                 {activeSection === 'reminders' && (
                   <div>

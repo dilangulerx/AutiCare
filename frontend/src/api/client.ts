@@ -7,7 +7,7 @@ const api = axios.create({
   },
 })
 
-// Her istekte token ekle
+
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token')
   if (token) {
@@ -32,3 +32,5 @@ export default api
 
 export const updateMe = (data: { name?: string; email?: string; phone?: string; password?: string }) =>
   api.put('/auth/me', data)
+
+export const deleteChild = (id: number) => api.delete(`/children/${id}`)

@@ -1,12 +1,19 @@
+import logging
+import os
+
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from dotenv import load_dotenv
+
+load_dotenv()
+# CrewAI 1.x: appdirs ile yerel veri yolu; yoksa cwd adı kullanılır (ör. "backend")
+os.environ.setdefault("CREWAI_STORAGE_DIR", "AutiCare")
+
 from app.database import create_tables
 from app.routers import auth, children, daily_logs, weekly_reports, reminders
 from app.services.scheduler import start_scheduler, stop_scheduler
-import logging
+from app.routers import ai
 
-load_dotenv()
 logging.basicConfig(level=logging.INFO)
 
 app = FastAPI(
@@ -30,6 +37,7 @@ app.include_router(children.router)
 app.include_router(daily_logs.router)
 app.include_router(weekly_reports.router)
 app.include_router(reminders.router)
+app.include_router(ai.router)
 
 @app.on_event("startup")
 def startup():

@@ -10,4 +10,5 @@ obj/
 
 # Env dosyası
 .env
+backend/.env
 .env.*
