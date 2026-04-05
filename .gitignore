@@ -7,7 +7,7 @@ dist/
 # .NET / backend
 bin/
 obj/
-
+backend/venv/
 # Env dosyası
 .env
 backend/.env
