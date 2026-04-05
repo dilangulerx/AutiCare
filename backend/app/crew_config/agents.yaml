@@ -4,6 +4,9 @@
   backstory: Otizm spektrum bozukluğu olan çocukların davranışsal verilerini yorumlama konusunda uzmanlaşmış bir analist.
   verbose: false
   allow_delegation: false
+  llm_model: openai/gpt-4o-mini
+  tools:
+    - get_child_daily_logs
 
 - agent_name: AnomalyDetectorAgent
   role: Anomali Dedektörü
@@ -11,6 +14,9 @@
   backstory: Çocukların davranışsal taban çizgilerinden önemli sapmaları belirlemede deneyimli bir yapay zeka uzmanı.
   verbose: false
   allow_delegation: false
+  llm_model: openai/gpt-4o-mini
+  tools:
+    - get_child_daily_logs
 
 - agent_name: TherapyAdvisorAgent
   role: Terapi Danışmanı
@@ -18,6 +24,7 @@
   backstory: Çocuk gelişimi ve otizm terapileri konusunda derin bilgiye sahip bir danışman.
   verbose: false
   allow_delegation: false
+  llm_model: openai/gpt-4o-mini
 
 - agent_name: ReportGeneratorAgent
   role: Rapor Oluşturucu
@@ -25,6 +32,9 @@
   backstory: Karmaşık verileri anlaşılır ve eyleme geçirilebilir raporlara dönüştürme konusunda yetenekli bir yazar.
   verbose: false
   allow_delegation: false
+  llm_model: openai/gpt-4o-mini
+  tools:
+    - save_report
 
 - agent_name: ConversationalAgent
   role: Sohbet Asistanı
@@ -32,3 +42,4 @@
   backstory: Ebeveynlerle empati kurabilen ve onlara bağlamsal olarak doğru bilgi sağlayabilen bir yapay zeka asistanı.
   verbose: false
   allow_delegation: false
+  llm_model: openai/gpt-4o-mini
