@@ -3,6 +3,8 @@ node_modules/
 frontend/node_modules/
 dist/
 .vite/
+__pycache__/
+*.pyc
 
 # .NET / backend
 bin/

@@ -65,11 +65,10 @@ def build_tasks(agents: dict, placeholders: dict = {}) -> list:
         name = t.pop("task_name")
         agent_name = t.pop("agent")
 
-        # Eğer placeholders'da bu task_name varsa direkt üzerine yaz
         if name in placeholders:
             t["description"] = placeholders[name]
         else:
-            # YAML'deki placeholder'ları doldur
+            
             try:
                 t["description"] = t["description"].format(**placeholders)
             except (KeyError, IndexError):
@@ -129,7 +128,8 @@ destekleyici bir dille yaz. Şunları içermeli:
 - Dikkat edilmesi gereken alan
 - Ebeveyne 3 pratik öneri
 Tıbbi teşhis koyma, sadece gözlem ve öneri sun.
-Raporun başında "İşte...", "Merhaba..." gibi giriş cümleleri kullanma. Direkt değerlendirmeye başla.
+Raporun başında "İşte...", "Merhaba..." gibi giriş cümleleri kullanma. 
+Direkt değerlendirmeye başla.
 """
         }
 

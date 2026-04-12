@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { AutiCareLogoHorizontal } from '../components/AutiCareLogo'
+import { WorkflowTrigger } from '../components/WorkflowTrigger'
 import type { Child } from '../api/children'
 import { getChildren, createChild } from '../api/children'
 import { getLogs, createLog } from '../api/logs'
@@ -11,10 +12,13 @@ import { getReminders, createReminder, deleteReminder } from '../api/reminders'
 import type { Reminder } from '../api/reminders'
 import { sendChatMessage, checkAnomaly } from '../api/ai'
 
-type ActiveSection = 'overview' | 'daily-log' | 'reports' | 'reminders' | 'settings' | 'chat'
+type ActiveSection = 'overview' | 'daily-log' | 'reports' | 'reminders' | 'settings' | 'chat' | 'workflow'
 
 export default function Dashboard() {
   const { user, logout, updateUser } = useAuth()
+
+  const notesTextareaRef = useRef<HTMLTextAreaElement>(null)
+  const chatTextareaRef = useRef<HTMLTextAreaElement>(null)
 
   const [children, setChildren] = useState<Child[]>([])
   const [selectedChild, setSelectedChild] = useState<Child | null>(null)
@@ -49,6 +53,9 @@ export default function Dashboard() {
   const [chatInput, setChatInput] = useState('')
   const [chatLoading, setChatLoading] = useState(false)
 
+  const [logError, setLogError] = useState('')
+  const [reminderError, setReminderError] = useState('')
+
   const [anomaly, setAnomaly] = useState<{has_anomaly: boolean, message: string} | null>(null)
 
   useEffect(() => { loadChildren() }, [])
@@ -60,6 +67,19 @@ export default function Dashboard() {
   useEffect(() => {
     if (user) setSettingsForm(prev => ({ ...prev, name: user.name, email: user.email, phone: user.phone || '' }))
   }, [user])
+
+  // Auto-expand textareas
+  useEffect(() => {
+    const expandTextarea = (textarea: HTMLTextAreaElement | null, maxHeight: number = 200) => {
+      if (!textarea) return
+      textarea.style.height = 'auto'
+      const newHeight = Math.min(textarea.scrollHeight, maxHeight)
+      textarea.style.height = `${newHeight}px`
+    }
+    
+    if (notesTextareaRef.current) expandTextarea(notesTextareaRef.current, 200)
+    if (chatTextareaRef.current) expandTextarea(chatTextareaRef.current, 120)
+  }, [logForm.notes, chatInput])
 
   const loadChildren = async () => {
     try {
@@ -100,13 +120,21 @@ export default function Dashboard() {
   const handleSaveLog = async () => {
     if (!selectedChild) return
     setLogSaving(true)
+    setLogError('')
     try {
       const today = new Date().toISOString().split('T')[0]
       await createLog({ ...logForm, child_id: selectedChild.id, date: today })
       setLogSuccess(true)
+      setLogForm({ eye_contact: 3, aggression_level: 1, communication_score: 3, sleep_hours: 8, notes: '', date: new Date().toISOString().split('T')[0] })
       setTimeout(() => setLogSuccess(false), 3000)
       loadChildData(selectedChild.id)
-    } catch (e) { console.error(e) }
+    } catch (e: unknown) { 
+      const error = e as any
+      const errorMsg = error?.response?.data?.detail || error?.message || 'Kayıt ekleme başarısız'
+      setLogError(errorMsg)
+      setTimeout(() => setLogError(''), 5000)
+      console.error(e) 
+    }
     finally { setLogSaving(false) }
   }
 
@@ -125,11 +153,18 @@ export default function Dashboard() {
   const handleAddReminder = async () => {
     if (!selectedChild || !reminderForm.title || !reminderForm.remind_at) return
     setReminderSaving(true)
+    setReminderError('')
     try {
       const res = await createReminder({ ...reminderForm, child_id: selectedChild.id, is_active: true })
       setReminders([...reminders, res.data])
       setReminderForm({ title: '', reminder_type: 'general', remind_at: '', recur_type: 'none' })
-    } catch (e) { console.error(e) }
+    } catch (e: unknown) {
+      const error = e as any
+      const errorMsg = error?.response?.data?.detail || error?.message || 'Hatırlatıcı ekleme başarısız'
+      setReminderError(errorMsg)
+      setTimeout(() => setReminderError(''), 5000)
+      console.error(e)
+    }
     finally { setReminderSaving(false) }
   }
 
@@ -138,10 +173,10 @@ export default function Dashboard() {
     try {
       const { deleteChild } = await import('../api/children')
       await deleteChild(id)
-      const updated = children.filter(c => c.id !== id)
+      const updated = children.filter((c: any) => c.id !== id)
       setChildren(updated)
       setSelectedChild(updated.length > 0 ? updated[0] : null)
-    } catch (e) { console.error(e) }
+    } catch (e: unknown) { console.error(e) }
   }
 
 
@@ -187,7 +222,7 @@ export default function Dashboard() {
     try {
       const res = await sendChatMessage(selectedChild.id, userMessage)
       setChatMessages(prev => [...prev, { role: 'ai', text: res.data.response }])
-    } catch (e) {
+    } catch (_e) {
       setChatMessages(prev => [...prev, { role: 'ai', text: 'Bir hata oluştu, tekrar deneyin.' }])
     } finally {
       setChatLoading(false)
@@ -356,9 +391,11 @@ export default function Dashboard() {
                     <input type={field.type} value={settingsForm[field.key as keyof typeof settingsForm]}
                       onChange={e => setSettingsForm({ ...settingsForm, [field.key]: e.target.value })}
                       placeholder={field.placeholder}
+                      aria-label={field.label}
+                      title={field.label}
                       style={{ width: '100%', padding: '12px 14px 12px 42px', borderRadius: 12, border: '2px solid #E5E7EB', fontSize: 14, color: '#1F2937', background: darkMode ? '#0F172A' : 'white', outline: 'none', boxSizing: 'border-box' }}
-                      onFocus={e => e.target.style.borderColor = '#0891B2'}
-                      onBlur={e => e.target.style.borderColor = '#E5E7EB'}
+                      onFocus={e => { e.currentTarget.style.borderColor = '#0891B2' }}
+                      onBlur={e => { e.currentTarget.style.borderColor = '#E5E7EB' }}
                     />
                   </div>
                 </div>
@@ -378,9 +415,11 @@ export default function Dashboard() {
                     <input type="password" value={settingsForm[field.key as keyof typeof settingsForm]}
                       onChange={e => setSettingsForm({ ...settingsForm, [field.key]: e.target.value })}
                       placeholder={field.placeholder}
+                      aria-label={field.label}
+                      title={field.label}
                       style={{ width: '100%', padding: '12px 14px 12px 42px', borderRadius: 12, border: '2px solid #E5E7EB', fontSize: 14, color: '#1F2937', background: darkMode ? '#0F172A' : 'white', outline: 'none', boxSizing: 'border-box' }}
-                      onFocus={e => e.target.style.borderColor = '#0891B2'}
-                      onBlur={e => e.target.style.borderColor = '#E5E7EB'}
+                      onFocus={e => { e.currentTarget.style.borderColor = '#0891B2' }}
+                      onBlur={e => { e.currentTarget.style.borderColor = '#E5E7EB' }}
                     />
                   </div>
                 </div>
@@ -565,9 +604,11 @@ export default function Dashboard() {
                            value={logForm.date}
                            max={new Date().toISOString().split('T')[0]}
                            onChange={e => setLogForm({ ...logForm, date: e.target.value })}
+                           aria-label="Tarih"
+                           title="Günlük log tarihi"
                            style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '2px solid #E5E7EB', fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
-                           onFocus={e => e.target.style.borderColor = '#0891B2'}
-                           onBlur={e => e.target.style.borderColor = '#E5E7EB'}
+                           onFocus={e => { e.currentTarget.style.borderColor = '#0891B2' }}
+                           onBlur={e => { e.currentTarget.style.borderColor = '#E5E7EB' }}
                           />
                         </div>
 
@@ -584,17 +625,33 @@ export default function Dashboard() {
 
                       <div style={{ marginBottom: 28 }}>
                         <label style={{ fontWeight: 600, color: '#0D4F4F', fontSize: 14, display: 'block', marginBottom: 8 }}>📋 Günlük Notlar</label>
-                        <textarea value={logForm.notes} onChange={e => setLogForm({ ...logForm, notes: e.target.value })}
+                        <textarea 
+                          ref={notesTextareaRef}
+                          value={logForm.notes} 
+                          onChange={e => {
+                            setLogForm({ ...logForm, notes: e.target.value })
+                            if (notesTextareaRef.current) {
+                              notesTextareaRef.current.style.height = 'auto'
+                              const newHeight = Math.min(notesTextareaRef.current.scrollHeight, 200)
+                              notesTextareaRef.current.style.height = `${newHeight}px`
+                            }
+                          }}
                           placeholder="Bugün neler yaşandı? Özel gözlemleriniz..."
-                          style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: '2px solid #E5E7EB', fontSize: 14, color: '#374151', outline: 'none', resize: 'vertical', minHeight: 100, boxSizing: 'border-box', fontFamily: 'inherit' }}
-                          onFocus={e => e.target.style.borderColor = '#0891B2'}
-                          onBlur={e => e.target.style.borderColor = '#E5E7EB'}
+                          style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: '2px solid #E5E7EB', fontSize: 14, color: '#374151', outline: 'none', resize: 'none', minHeight: 100, boxSizing: 'border-box', fontFamily: 'inherit', overflowY: 'hidden' }}
+                          onFocus={e => { e.currentTarget.style.borderColor = '#0891B2' }}
+                          onBlur={e => { e.currentTarget.style.borderColor = '#E5E7EB' }}
                         />
                       </div>
 
                       {logSuccess && (
                         <div style={{ background: '#ECFDF5', border: '1px solid #A7F3D0', color: '#065F46', padding: '12px 16px', borderRadius: 12, marginBottom: 16, fontSize: 14 }}>
                           ✅ Kayıt başarıyla kaydedildi!
+                        </div>
+                      )}
+
+                      {logError && (
+                        <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', color: '#DC2626', padding: '12px 16px', borderRadius: 12, marginBottom: 16, fontSize: 14 }}>
+                          ⚠️ {logError}
                         </div>
                       )}
 
@@ -744,18 +801,31 @@ export default function Dashboard() {
                      </div>
 
                      {/* Input */}
-                     <div style={{ display: 'flex', gap: 12 }}>
-                      <input
+                     <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
+                      <textarea
+                        ref={chatTextareaRef}
                         value={chatInput}
-                        onChange={e => setChatInput(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSendChat()}
+                        onChange={e => {
+                          setChatInput(e.target.value)
+                          if (chatTextareaRef.current) {
+                            chatTextareaRef.current.style.height = 'auto'
+                            const newHeight = Math.min(chatTextareaRef.current.scrollHeight, 120)
+                            chatTextareaRef.current.style.height = `${newHeight}px`
+                          }
+                        }}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault()
+                            handleSendChat()
+                          }
+                        }}
                         placeholder={`${selectedChild.name} hakkında bir şey sorun...`}
-                        style={{ flex: 1, padding: '14px 18px', borderRadius: 14, border: '2px solid #E5E7EB', fontSize: 14, outline: 'none', fontFamily: 'inherit' }}
-                        onFocus={e => e.target.style.borderColor = '#0891B2'}
-                        onBlur={e => e.target.style.borderColor = '#E5E7EB'}
+                        style={{ flex: 1, padding: '14px 18px', borderRadius: 14, border: '2px solid #E5E7EB', fontSize: 14, outline: 'none', fontFamily: 'inherit', resize: 'none', minHeight: 48, maxHeight: 120, boxSizing: 'border-box', overflowY: 'auto' }}
+                        onFocus={e => { e.currentTarget.style.borderColor = '#0891B2' }}
+                        onBlur={e => { e.currentTarget.style.borderColor = '#E5E7EB' }}
                       />
                       <button onClick={handleSendChat} disabled={chatLoading || !chatInput.trim()}
-                        style={{ padding: '14px 24px', borderRadius: 14, border: 'none', background: chatLoading ? '#9CA3AF' : 'linear-gradient(135deg, #0891B2, #5BB8D4)', color: 'white', fontWeight: 700, cursor: chatLoading ? 'not-allowed' : 'pointer', fontSize: 14, boxShadow: '0 4px 14px rgba(8,145,178,0.3)' }}>
+                        style={{ padding: '14px 24px', borderRadius: 14, border: 'none', background: chatLoading ? '#9CA3AF' : 'linear-gradient(135deg, #0891B2, #5BB8D4)', color: 'white', fontWeight: 700, cursor: chatLoading ? 'not-allowed' : 'pointer', fontSize: 14, boxShadow: '0 4px 14px rgba(8,145,178,0.3)', flexShrink: 0, height: 48 }}>
                          Gönder →
                       </button>
                     </div>
@@ -776,15 +846,19 @@ export default function Dashboard() {
                           <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>BAŞLIK</label>
                           <input value={reminderForm.title} onChange={e => setReminderForm({ ...reminderForm, title: e.target.value })}
                             placeholder="ör. İlaç zamanı, Terapi seansı..."
+                            aria-label="Hatırlatıcı başlığı"
+                            title="Hatırlatıcı başlığı"
                             style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '2px solid #E5E7EB', fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
-                            onFocus={e => e.target.style.borderColor = '#0891B2'}
-                            onBlur={e => e.target.style.borderColor = '#E5E7EB'}
+                            onFocus={e => { e.currentTarget.style.borderColor = '#0891B2' }}
+                            onBlur={e => { e.currentTarget.style.borderColor = '#E5E7EB' }}
                           />
                         </div>
 
                         <div style={{ marginBottom: 16 }}>
                           <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>TÜR</label>
                           <select value={reminderForm.reminder_type} onChange={e => setReminderForm({ ...reminderForm, reminder_type: e.target.value })}
+                            aria-label="Hatırlatıcı türü"
+                            title="Hatırlatıcı türü"
                             style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '2px solid #E5E7EB', fontSize: 14, outline: 'none', background: 'white' }}>
                             <option value="general">Genel</option>
                             <option value="medication">💊 İlaç</option>
@@ -795,22 +869,40 @@ export default function Dashboard() {
 
                         <div style={{ marginBottom: 16 }}>
                           <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>TARİH & SAAT</label>
-                          <input type="datetime-local" value={reminderForm.remind_at} onChange={e => setReminderForm({ ...reminderForm, remind_at: e.target.value })}
+                          <input 
+                            type="datetime-local" 
+                            value={reminderForm.remind_at || ''} 
+                            onChange={e => setReminderForm({ ...reminderForm, remind_at: e.target.value })}
+                            aria-label="Tarih ve saat"
+                            title="Hatırlatıcı tarihi ve saati"
                             style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '2px solid #E5E7EB', fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
-                            onFocus={e => e.target.style.borderColor = '#0891B2'}
-                            onBlur={e => e.target.style.borderColor = '#E5E7EB'}
+                            onFocus={e => { e.currentTarget.style.borderColor = '#0891B2' }}
+                            onBlur={e => { e.currentTarget.style.borderColor = '#E5E7EB' }}
                           />
                         </div>
 
                         <div style={{ marginBottom: 20 }}>
                           <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>TEKRAR</label>
-                          <select value={reminderForm.recur_type} onChange={e => setReminderForm({ ...reminderForm, recur_type: e.target.value })}
-                            style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '2px solid #E5E7EB', fontSize: 14, outline: 'none', background: 'white' }}>
+                          <select 
+                            value={reminderForm.recur_type || 'none'} 
+                            onChange={e => setReminderForm({ ...reminderForm, recur_type: e.target.value })}
+                            aria-label="Tekrar türü"
+                            title="Hatırlatıcı tekrar türü"
+                            style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '2px solid #E5E7EB', fontSize: 14, outline: 'none', background: 'white' }}
+                            onFocus={e => { e.currentTarget.style.borderColor = '#0891B2' }}
+                            onBlur={e => { e.currentTarget.style.borderColor = '#E5E7EB' }}
+                          >
                             <option value="none">Tekrar Yok</option>
                             <option value="daily">Her Gün</option>
                             <option value="weekly">Her Hafta</option>
                           </select>
                         </div>
+
+                        {reminderError && (
+                          <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', color: '#DC2626', padding: '12px 16px', borderRadius: 12, marginBottom: 16, fontSize: 13 }}>
+                            ⚠️ {reminderError}
+                          </div>
+                        )}
 
                         <button onClick={handleAddReminder} disabled={reminderSaving} style={{ width: '100%', padding: '13px', borderRadius: 12, border: 'none', background: reminderSaving ? '#9CA3AF' : 'linear-gradient(135deg, #0891B2, #5BB8D4)', color: 'white', fontWeight: 600, cursor: reminderSaving ? 'not-allowed' : 'pointer', fontSize: 14 }}>
                           {reminderSaving ? '⏳ Ekleniyor...' : '+ Hatırlatıcı Ekle'}
@@ -862,24 +954,30 @@ export default function Dashboard() {
             <div style={{ marginBottom: 16 }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>AD SOYAD</label>
               <input value={newChildName} onChange={e => setNewChildName(e.target.value)} placeholder="Çocuğunuzun adı"
+                aria-label="Çocuğun adı"
+                title="Çocuğun adı"
                 style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '2px solid #E5E7EB', fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
-                onFocus={e => e.target.style.borderColor = '#0891B2'} onBlur={e => e.target.style.borderColor = '#E5E7EB'}
+                onFocus={e => { e.currentTarget.style.borderColor = '#0891B2' }} onBlur={e => { e.currentTarget.style.borderColor = '#E5E7EB' }}
               />
             </div>
 
             <div style={{ marginBottom: 16 }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>DOĞUM TARİHİ</label>
               <input type="date" value={newChildBirth} onChange={e => setNewChildBirth(e.target.value)}
+                aria-label="Çocuğun doğum tarihi"
+                title="Çocuğun doğum tarihi"
                 style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '2px solid #E5E7EB', fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
-                onFocus={e => e.target.style.borderColor = '#0891B2'} onBlur={e => e.target.style.borderColor = '#E5E7EB'}
+                onFocus={e => { e.currentTarget.style.borderColor = '#0891B2' }} onBlur={e => { e.currentTarget.style.borderColor = '#E5E7EB' }}
               />
             </div>
 
             <div style={{ marginBottom: 24 }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>NOTLAR (opsiyonel)</label>
               <textarea value={newChildNotes} onChange={e => setNewChildNotes(e.target.value)} placeholder="Tanı, ilaçlar, özel durumlar..."
+                aria-label="Çocuk notları"
+                title="Çocuk hakkında notlar"
                 style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '2px solid #E5E7EB', fontSize: 14, outline: 'none', resize: 'none', minHeight: 80, boxSizing: 'border-box', fontFamily: 'inherit' }}
-                onFocus={e => e.target.style.borderColor = '#0891B2'} onBlur={e => e.target.style.borderColor = '#E5E7EB'}
+                onFocus={e => { e.currentTarget.style.borderColor = '#0891B2' }} onBlur={e => { e.currentTarget.style.borderColor = '#E5E7EB' }}
               />
             </div>
 
