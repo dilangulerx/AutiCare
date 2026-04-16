@@ -5,6 +5,7 @@ dist/
 .vite/
 __pycache__/
 *.pyc
+.DS_Store
 
 # .NET / backend
 bin/

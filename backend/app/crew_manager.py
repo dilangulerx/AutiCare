@@ -1,10 +1,16 @@
 """
 AutiCare CrewAI Enhanced Integration
 LangGraph ile birlikte çalışan CrewAI entegrasyonu
+
+MODERNIZASYON (v2.0):
+- Yeni ajanlar: LiteratureReviewAgent, ParentSupportAgent, DataAnalystAgent
+- Araç entegrasyonu: Her ajana uygun araçlar (arama, veritabanı, rapor formatı)
+- Yeni crew türleri: deep_analysis, literature_review, parent_support
 """
 
 import logging
 import json
+import asyncio
 from typing import Optional, List, Dict, Any
 from crewai import Agent, Task, Crew
 import yaml
@@ -137,6 +143,64 @@ class AutiCareCrewManager:
                 query,
             )
         
+        # ── YENİ CREW TÜRLERİ ──
+        
+        # NEDEN: Mevcut analiz yüzeyseldi. deep_analysis, DataAnalystAgent'ı
+        # kullanarak korelasyonları ve zaman serisi trendlerini analiz eder.
+        elif crew_type == "deep_analysis":
+            agents_list = self._select_agents([
+                "BehavioralAnalystAgent",
+                "DataAnalystAgent",
+                "AnomalyDetectorAgent",
+                "TherapyAdvisorAgent",
+            ])
+            tasks_list = self._create_tasks(
+                agents_list,
+                [
+                    "analyze_logs_task",
+                    "deep_data_analysis_task",
+                    "detect_anomalies_task",
+                    "search_enhanced_recommendations_task",
+                ],
+                child_name,
+                logs_text,
+            )
+        
+        # NEDEN: Terapi önerilerinin bilimsel dayanaklarla desteklenmesi
+        # güvenilirliği artırır. LiteratureReviewAgent güncel kaynakları tarar.
+        elif crew_type == "literature_review":
+            agents_list = self._select_agents([
+                "LiteratureReviewAgent",
+                "TherapyAdvisorAgent",
+            ])
+            tasks_list = self._create_tasks(
+                agents_list,
+                [
+                    "literature_review_task",
+                    "search_enhanced_recommendations_task",
+                ],
+                child_name,
+                logs_text,
+            )
+        
+        # NEDEN: Ebeveynler sadece veri istemez, pratik destek ve
+        # rehberlik de ister. ParentSupportAgent bunu sağlar.
+        elif crew_type == "parent_support":
+            agents_list = self._select_agents([
+                "ParentSupportAgent",
+                "ConversationalAgent",
+            ])
+            tasks_list = self._create_tasks(
+                agents_list,
+                [
+                    "parent_guidance_task",
+                    "handle_chat_query_task",
+                ],
+                child_name,
+                logs_text,
+                query,
+            )
+        
         if not agents_list or not tasks_list:
             logger.warning(f"⚠️ Ekip oluşturulamadı: {crew_type}")
             return None
@@ -155,7 +219,11 @@ class AutiCareCrewManager:
     
     def _select_agents(self, agent_names: List[str]) -> List[Agent]:
         """
-        Yapılandırmadan ajanları seç
+        Yapılandırmadan ajanları seç ve uygun araçları bağla.
+        
+        NEDEN ARAÇ BAĞLAMA?
+        Mevcut ajanlar araç kullanamıyordu. Artık her ajan türüne göre
+        uygun araçlar (arama, veritabanı, rapor) otomatik bağlanır.
         
         Args:
             agent_names: Ajan adlarının listesi
@@ -172,17 +240,21 @@ class AutiCareCrewManager:
                 continue
             
             try:
+                # Ajana uygun araçları al
+                from app.tools import get_tools_for_agent
+                agent_tools = get_tools_for_agent(agent_name)
+                
                 agent = Agent(
                     role=agent_config.get("role", ""),
                     goal=agent_config.get("goal", ""),
                     backstory=agent_config.get("backstory", ""),
                     verbose=agent_config.get("verbose", False),
                     allow_delegation=agent_config.get("allow_delegation", False),
-                    # LLM model'i ayarla
-                    # llm=agent_config.get("llm_model"),  # CrewAI v1.1+ ile
+                    tools=agent_tools if agent_tools else [],
                 )
                 agents.append(agent)
-                logger.debug(f"  ✓ {agent_name} eklendi")
+                tools_info = f" (araçlar: {len(agent_tools)})" if agent_tools else ""
+                logger.debug(f"  ✓ {agent_name} eklendi{tools_info}")
             
             except Exception as e:
                 logger.error(f"❌ {agent_name} oluşturulamadı: {e}")
@@ -280,8 +352,8 @@ class AutiCareCrewManager:
             }
         
         try:
-            # Crew'ı çalıştır
-            result = crew.kickoff()
+            # Crew'ı çalıştır — kickoff() senkron, event loop'u bloklamemak için to_thread kullan
+            result = await asyncio.to_thread(crew.kickoff)
             
             logger.info(f"✓ Crew Çalıştırması Tamamlandı")
             
@@ -306,11 +378,20 @@ class AutiCareCrewManager:
         """Crew Yöneticisi bilgilerini al"""
         return {
             "manager": "AutiCareCrewManager",
-            "version": "1.0.0",
+            "version": "2.0.0",
             "agents_loaded": len(self.agents_config),
             "tasks_loaded": len(self.tasks_config),
-            "crew_types": ["analysis", "anomaly", "recommendations", "report", "chat"],
+            "crew_types": [
+                "analysis", "anomaly", "recommendations", "report", "chat",
+                "deep_analysis", "literature_review", "parent_support",
+            ],
             "agents": list(self.agents_config.keys()),
+            "features": [
+                "tool_integration",
+                "search_capability",
+                "database_query",
+                "report_formatting",
+            ],
         }
 
 

@@ -15,7 +15,7 @@ export const checkAnomaly = (childId: number) =>
 // ============================================================================
 
 export interface WorkflowRequest {
-  task_type: 'report' | 'chat' | 'anomaly' | 'analysis'
+  task_type: 'report' | 'chat' | 'anomaly' | 'analysis' | 'deep_analysis' | 'literature_review' | 'parent_support'
   query?: string
   streaming?: boolean
 }
@@ -29,6 +29,12 @@ export interface WorkflowResponse {
   recommendations?: string[]
   execution_time: number
   error?: string
+  // Yeni alanlar
+  needs_human_review?: boolean
+  human_review_status?: string
+  confidence_score?: number
+  search_results?: Array<Record<string, any>>
+  literature_findings?: string
 }
 
 /**
@@ -150,6 +156,105 @@ export const performDeepAnalysis = async (childId: number) => {
     task_type: 'analysis',
     streaming: false,
   })
+}
+
+/**
+ * İstatistiksel Derin Analiz (DataAnalystAgent)
+ * NEDEN: Korelasyonlar, zaman serisi trendleri ve uzun vadeli desenler
+ */
+export const performStatisticalAnalysis = async (childId: number) => {
+  return executeWorkflow(childId, {
+    task_type: 'deep_analysis',
+    streaming: false,
+  })
+}
+
+/**
+ * Literatür Araştırması (LiteratureReviewAgent)
+ * NEDEN: Güncel akademik kaynakları tarayarak bilimsel dayanak sağlar
+ */
+export const performLiteratureReview = async (childId: number) => {
+  return executeWorkflow(childId, {
+    task_type: 'literature_review',
+    streaming: false,
+  })
+}
+
+/**
+ * Ebeveyn Destek (ParentSupportAgent)
+ * NEDEN: Pratik günlük stratejiler ve empatik rehberlik
+ */
+export const getParentSupport = async (childId: number, query?: string) => {
+  return executeWorkflow(childId, {
+    task_type: 'parent_support',
+    query,
+    streaming: false,
+  })
+}
+
+// ============================================================================
+// HUMAN-IN-THE-LOOP (HITL) API
+// ============================================================================
+
+export interface HumanReview {
+  id: number
+  workflow_id: string
+  task_type: string
+  ai_output: string
+  confidence_score?: number
+  status: string
+  reviewer_notes?: string
+  modified_output?: string
+  created_at?: string
+  reviewed_at?: string
+}
+
+/**
+ * Onay Bekleyen Çıktıları Al
+ */
+export const getPendingReviews = async (childId: number): Promise<HumanReview[]> => {
+  try {
+    const { data } = await api.get<HumanReview[]>(`/ai/v2/reviews/${childId}`)
+    return data
+  } catch (error) {
+    console.error('Onay listesi hatası:', error)
+    throw error
+  }
+}
+
+/**
+ * Tüm Onay Geçmişini Al
+ */
+export const getAllReviews = async (childId: number): Promise<HumanReview[]> => {
+  try {
+    const { data } = await api.get<HumanReview[]>(`/ai/v2/reviews/all/${childId}`)
+    return data
+  } catch (error) {
+    console.error('Onay geçmişi hatası:', error)
+    throw error
+  }
+}
+
+/**
+ * Onay Durumunu Güncelle
+ */
+export const updateReview = async (
+  reviewId: number,
+  status: 'approved' | 'rejected' | 'modified',
+  reviewerNotes?: string,
+  modifiedOutput?: string,
+) => {
+  try {
+    const { data } = await api.put(`/ai/v2/reviews/${reviewId}`, {
+      status,
+      reviewer_notes: reviewerNotes,
+      modified_output: modifiedOutput,
+    })
+    return data
+  } catch (error) {
+    console.error('Onay güncelleme hatası:', error)
+    throw error
+  }
 }
 
 /**

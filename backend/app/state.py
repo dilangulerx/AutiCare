@@ -3,10 +3,9 @@ AutiCare LangGraph State Management
 Sistemin tümünü yönetmek için merkezi durum yönetimi sınıfı
 """
 
-from typing import Annotated, List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any
 from typing_extensions import TypedDict
 from langchain_core.messages import BaseMessage
-from operator import add
 
 
 class AutiCareState(TypedDict):
@@ -21,7 +20,7 @@ class AutiCareState(TypedDict):
     - logs_data: Günlük davranış verileri
     - current_task: Mevcut görev türü ("report", "chat", "anomaly", "analysis")
     - current_query: Kullanıcı sorusu/isteği
-    - task_status: Görev durumu ("pending", "processing", "completed", "error")
+    - task_status: Görev durumu ("pending", "processing", "completed", "error", "awaiting_review")
     - analysis_result: Davranış analizi sonucu
     - anomalies: Tespit edilen anormallikler
     - recommendations: Terapi önerileri
@@ -29,15 +28,29 @@ class AutiCareState(TypedDict):
     - error_message: Hata mesajı varsa
     - metadata: Ek veriler
     - should_end: İş akışı sonlanacak mı?
+    
+    YENİ ALANLAR (Modernizasyon):
+    - search_results: Arama araçlarından dönen sonuçlar
+    - literature_findings: Akademik araştırma bulguları
+    - needs_human_review: İnsan onayı gerekiyor mu?
+    - human_review_status: İnsan onayının durumu ("pending", "approved", "rejected", "modified")
+    - human_review_notes: İnsan uzmanın notları
+    - human_reviewed_output: İnsan tarafından düzenlenen çıktı
+    - parallel_results: Paralel çalıştırılan görevlerin sonuçları
+    - confidence_score: AI çıktısının güven skoru (0-1 arası)
+    
+    NOT: messages alanında `add` reducer KULLANILMIYOR çünkü tüm node'lar
+    state'i in-place mutate edip tam state döndürüyor. add reducer ile bu
+    yaklaşım mesaj duplikasyonuna sebep olur.
     """
-    messages: Annotated[List[BaseMessage], add, "Konuşma geçmişi"]
+    messages: List[BaseMessage]
     child_id: int
     child_name: str
     parent_id: int
     logs_data: Optional[List[Dict[str, Any]]]
     current_task: str  # "report", "chat", "anomaly", "analysis"
     current_query: Optional[str]
-    task_status: str  # "pending", "processing", "completed", "error"
+    task_status: str  # "pending", "processing", "completed", "error", "awaiting_review"
     analysis_result: Optional[Dict[str, Any]]
     anomalies: Optional[List[Dict[str, Any]]]
     recommendations: Optional[List[str]]
@@ -45,6 +58,15 @@ class AutiCareState(TypedDict):
     error_message: Optional[str]
     metadata: Dict[str, Any]
     should_end: bool
+    # Yeni alanlar — Agentic AI Modernizasyonu
+    search_results: Optional[List[Dict[str, Any]]]
+    literature_findings: Optional[str]
+    needs_human_review: bool
+    human_review_status: Optional[str]  # "pending", "approved", "rejected", "modified"
+    human_review_notes: Optional[str]
+    human_reviewed_output: Optional[str]
+    parallel_results: Optional[Dict[str, Any]]
+    confidence_score: Optional[float]
 
 
 class TaskConfig(TypedDict):
@@ -85,7 +107,29 @@ SUPPORTED_TASKS = {
         requires_analysis=True,
         requires_anomaly_detection=False,
         requires_recommendations=True
-    )
+    ),
+    # YENİ GÖREV TÜRLERİ
+    "deep_analysis": TaskConfig(
+        task_type="deep_analysis",
+        description="İstatistiksel derinlemesine veri analizi",
+        requires_analysis=True,
+        requires_anomaly_detection=True,
+        requires_recommendations=True
+    ),
+    "literature_review": TaskConfig(
+        task_type="literature_review",
+        description="Güncel akademik kaynak araştırması",
+        requires_analysis=False,
+        requires_anomaly_detection=False,
+        requires_recommendations=True
+    ),
+    "parent_support": TaskConfig(
+        task_type="parent_support",
+        description="Ebeveyn destek ve rehberlik",
+        requires_analysis=False,
+        requires_anomaly_detection=False,
+        requires_recommendations=True
+    ),
 }
 
 
@@ -131,4 +175,13 @@ def init_state(
             "execution_time": 0,
         },
         should_end=False,
+        # Yeni alanlar
+        search_results=None,
+        literature_findings=None,
+        needs_human_review=False,
+        human_review_status=None,
+        human_review_notes=None,
+        human_reviewed_output=None,
+        parallel_results=None,
+        confidence_score=None,
     )

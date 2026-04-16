@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { AutiCareLogoHorizontal } from '../components/AutiCareLogo'
 import { WorkflowTrigger } from '../components/WorkflowTrigger'
+import { HumanReviewPanel } from '../components/HumanReviewPanel'
 import type { Child } from '../api/children'
 import { getChildren, createChild } from '../api/children'
 import { getLogs, createLog } from '../api/logs'
@@ -12,7 +13,7 @@ import { getReminders, createReminder, deleteReminder } from '../api/reminders'
 import type { Reminder } from '../api/reminders'
 import { sendChatMessage, checkAnomaly } from '../api/ai'
 
-type ActiveSection = 'overview' | 'daily-log' | 'reports' | 'reminders' | 'settings' | 'chat' | 'workflow'
+type ActiveSection = 'overview' | 'daily-log' | 'reports' | 'reminders' | 'settings' | 'chat' | 'workflow' | 'reviews'
 
 export default function Dashboard() {
   const { user, logout, updateUser } = useAuth()
@@ -327,6 +328,7 @@ export default function Dashboard() {
               { id: 'reports', icon: '🤖', label: 'AI Raporlar' },
               { id: 'reminders', icon: '🔔', label: 'Hatırlatıcılar' },
               { id: 'chat', icon: '💬', label: 'AI Asistan' },
+              ...(user?.role === 'admin' ? [{ id: 'reviews', icon: '👤', label: 'AI Onay Paneli' }] : []),
               { id: 'settings', icon: '⚙️', label: 'Ayarlar' },
             ].map(item => (
               <button key={item.id} onClick={() => setActiveSection(item.id as ActiveSection)} style={{
@@ -832,6 +834,19 @@ export default function Dashboard() {
                  </div>
                 )}
                  
+                {/* ─── AI ONAY PANELİ (HITL) — Sadece admin (terapist/uzman) rolü ─── */}
+                {activeSection === 'reviews' && user?.role === 'admin' && (
+                  <div>
+                    <h1 style={{ fontSize: 24, fontWeight: 800, color: '#0D4F4F', marginBottom: 6 }}>👤 AI Onay Paneli</h1>
+                    <p style={{ color: '#6B7280', fontSize: 14, marginBottom: 28 }}>
+                      AI tarafından üretilen çıktıları gözden geçirin, onaylayın veya düzenleyin
+                    </p>
+                    <div style={{ background: 'white', borderRadius: 20, padding: '24px', boxShadow: '0 2px 16px rgba(0,0,0,0.06)' }}>
+                      <HumanReviewPanel childId={selectedChild.id} />
+                    </div>
+                  </div>
+                )}
+
                 {/* ─── HATIRLATICLAR ─── */}
                 {activeSection === 'reminders' && (
                   <div>

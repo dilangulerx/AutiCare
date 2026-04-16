@@ -28,4 +28,5 @@ def get_db():
 
 def create_tables():
     from app.models import User, Child, DailyLog, WeeklyReport, Reminder
+    from app.models.human_review import HumanReview
     Base.metadata.create_all(bind=engine)

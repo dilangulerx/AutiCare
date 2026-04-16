@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Otizm Gelişim Takip API",
-    description="Otizmli çocukların gelişimini takip eden AI destekli API (LangGraph + CrewAI Hibrit Sistem)",
-    version="2.0.0"
+    description="Otizmli çocukların gelişimini takip eden Agentic AI destekli API (LangGraph + CrewAI Hibrit Sistem - Search, HITL, Dinamik Rota)",
+    version="3.0.0"
 )
 
 app.add_middleware(

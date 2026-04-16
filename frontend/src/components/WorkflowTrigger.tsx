@@ -16,7 +16,7 @@ export function WorkflowTrigger() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<WorkflowResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [selectedTask, setSelectedTask] = useState<'report' | 'chat' | 'anomaly' | 'analysis'>('report')
+  const [selectedTask, setSelectedTask] = useState<'report' | 'chat' | 'anomaly' | 'analysis' | 'deep_analysis' | 'literature_review' | 'parent_support'>('report')
   const [chatQuery, setChatQuery] = useState('')
   const [showDetails, setShowDetails] = useState(false)
 
@@ -113,6 +113,9 @@ export function WorkflowTrigger() {
             { id: 'chat', label: '💬 Sohbet', desc: 'Ebeveyn soruları' },
             { id: 'anomaly', label: '🔍 Anomali Tespiti', desc: 'Anormal davranışlar' },
             { id: 'analysis', label: '🧬 Derinlemesine Analiz', desc: 'Detaylı inceleme' },
+            { id: 'deep_analysis', label: '📈 İstatistiksel Analiz', desc: 'Korelasyon ve trendler' },
+            { id: 'literature_review', label: '📚 Literatür Araştırması', desc: 'Güncel akademik kaynaklar' },
+            { id: 'parent_support', label: '💛 Ebeveyn Desteği', desc: 'Pratik stratejiler' },
           ].map((task) => (
             <button
               key={task.id}
@@ -168,6 +171,16 @@ export function WorkflowTrigger() {
             <h3 className="font-bold text-lg text-green-800">✅ İşlem Başarılı</h3>
             <p className="text-sm text-green-700">Durum: {result.status}</p>
             <p className="text-sm text-green-700">Süre: {result.execution_time.toFixed(2)} saniye</p>
+            {result.confidence_score != null && (
+              <p className="text-sm text-green-700">
+                Güven Skoru: {Math.round(result.confidence_score * 100)}%
+              </p>
+            )}
+            {result.needs_human_review && (
+              <p className="text-sm text-amber-700 font-semibold mt-1">
+                ⏳ İnsan onayı bekleniyor — AI Onay Paneli'ni kontrol edin
+              </p>
+            )}
           </div>
 
           {/* Çıktı */}

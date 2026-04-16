@@ -29,7 +29,7 @@ class ChatRequest(BaseModel):
 
 class WorkflowRequest(BaseModel):
     """LangGraph İş Akışı İsteği"""
-    task_type: str  # "report", "chat", "anomaly", "analysis"
+    task_type: str  # "report", "chat", "anomaly", "analysis", "deep_analysis", "literature_review", "parent_support"
     query: Optional[str] = None
     streaming: bool = False
 
@@ -44,6 +44,28 @@ class WorkflowResponse(BaseModel):
     recommendations: Optional[List[str]] = None
     execution_time: float
     error: Optional[str] = None
+    # Yeni alanlar
+    needs_human_review: bool = False
+    human_review_status: Optional[str] = None
+    confidence_score: Optional[float] = None
+    search_results: Optional[List[dict]] = None
+    literature_findings: Optional[str] = None
+
+
+class ReviewUpdateRequest(BaseModel):
+    """HITL Onay Güncelleme İsteği"""
+    status: str  # "approved", "rejected", "modified"
+    reviewer_notes: Optional[str] = None
+    modified_output: Optional[str] = None
+
+
+class ReviewCreateRequest(BaseModel):
+    """HITL Manuel Onay Oluşturma İsteği"""
+    workflow_id: str
+    child_id: int
+    task_type: str
+    ai_output: str
+    confidence_score: Optional[float] = None
 
 
 # ============================================================================
@@ -220,6 +242,11 @@ async def execute_workflow(
             recommendations=result.get("recommendations"),
             execution_time=execution_time,
             error=result.get("error"),
+            needs_human_review=result.get("needs_human_review", False),
+            human_review_status=result.get("human_review_status"),
+            confidence_score=result.get("confidence_score"),
+            search_results=result.get("search_results"),
+            literature_findings=result.get("literature_findings"),
         )
     
     except Exception as e:
@@ -381,3 +408,210 @@ def reset_monitoring():
     perf_tracker.reset()
     
     return {"status": "reset", "message": "İzleme verileri temizlendi"}
+
+
+# ============================================================================
+# HUMAN-IN-THE-LOOP (HITL) ENDPOINTS
+# Terapist/ebeveyn onay mekanizması — Sadece admin (terapist/uzman) rolü
+#
+# NEDEN?
+# AI çıktıları tek başına güvenilir olmayabilir. Özellikle:
+# - Terapi önerileri yanlış yönlendirebilir
+# - Anomali tespitleri yanlış pozitif olabilir
+# - Medikal/klinik çıktılar uzman kontrolünden geçmeli
+# ============================================================================
+
+
+def _require_admin(current_user):
+    """Admin rolü kontrolü — HITL işlemleri sadece uzman/terapist yetkisindeki kullanıcılara açık."""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Bu işlem için yönetici (terapist/uzman) yetkisi gerekli")
+
+
+@router.get("/v2/reviews/{child_id}")
+def get_pending_reviews(
+    child_id: int,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Onay Bekleyen Çıktıları Listele
+    
+    NEDEN: Terapist/ebeveyn, AI'ın ürettiği ve onay bekleyen
+    tüm çıktıları görebilmeli.
+    """
+    _require_admin(current_user)
+    from app.models.human_review import HumanReview
+    
+    reviews = db.query(HumanReview).filter(
+        HumanReview.child_id == child_id,
+        HumanReview.status == "pending",
+    ).order_by(HumanReview.created_at.desc()).all()
+    
+    return [{
+        "id": r.id,
+        "workflow_id": r.workflow_id,
+        "task_type": r.task_type,
+        "ai_output": r.ai_output,
+        "confidence_score": r.confidence_score,
+        "status": r.status,
+        "created_at": r.created_at.isoformat() if r.created_at else None,
+    } for r in reviews]
+
+
+@router.get("/v2/reviews/all/{child_id}")
+def get_all_reviews(
+    child_id: int,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Tüm Onay Kayıtlarını Listele (geçmiş dahil)
+    """
+    _require_admin(current_user)
+    from app.models.human_review import HumanReview
+    
+    reviews = db.query(HumanReview).filter(
+        HumanReview.child_id == child_id,
+    ).order_by(HumanReview.created_at.desc()).limit(50).all()
+    
+    return [{
+        "id": r.id,
+        "workflow_id": r.workflow_id,
+        "task_type": r.task_type,
+        "ai_output": r.ai_output[:200] + "..." if len(r.ai_output or "") > 200 else r.ai_output,
+        "confidence_score": r.confidence_score,
+        "status": r.status,
+        "reviewer_notes": r.reviewer_notes,
+        "created_at": r.created_at.isoformat() if r.created_at else None,
+        "reviewed_at": r.reviewed_at.isoformat() if r.reviewed_at else None,
+    } for r in reviews]
+
+
+@router.put("/v2/reviews/{review_id}")
+async def update_review(
+    review_id: int,
+    request: ReviewUpdateRequest,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Onay Durumunu Güncelle (Onayla / Reddet / Düzenle)
+    
+    NEDEN: İnsan uzman, AI çıktısını:
+    - "approved": Olduğu gibi onaylayabilir
+    - "rejected": Reddedip yeniden işlenmesini isteyebilir → workflow otomatik yeniden çalışır
+    - "modified": Düzenleyerek onaylayabilir
+    """
+    _require_admin(current_user)
+    from app.models.human_review import HumanReview
+    
+    review = db.query(HumanReview).filter(HumanReview.id == review_id).first()
+    if not review:
+        raise HTTPException(status_code=404, detail="Onay kaydı bulunamadı")
+    
+    if request.status not in ("approved", "rejected", "modified"):
+        raise HTTPException(status_code=400, detail="Geçersiz durum. approved/rejected/modified olmalı")
+    
+    review.status = request.status
+    review.reviewer_id = current_user.id
+    review.reviewer_notes = request.reviewer_notes
+    review.reviewed_at = datetime.now()
+    
+    if request.status == "modified" and request.modified_output:
+        review.modified_output = request.modified_output
+    
+    db.commit()
+    db.refresh(review)
+    
+    logger.info(f"✓ Onay güncellendi: #{review_id} → {request.status}")
+    
+    # ── REJECTED → Workflow'u uzman notlarıyla yeniden çalıştır ──
+    rerun_result = None
+    if request.status == "rejected":
+        try:
+            child = db.query(Child).filter(Child.id == review.child_id).first()
+            if child:
+                logs = db.query(DailyLog).filter(
+                    DailyLog.child_id == child.id
+                ).order_by(DailyLog.date.desc()).limit(30).all()
+                
+                logs_data = [{
+                    "date": str(log.date),
+                    "eye_contact": log.eye_contact,
+                    "communication_score": log.communication_score,
+                    "aggression_level": log.aggression_level,
+                    "sleep_hours": log.sleep_hours,
+                    "behavioral_notes": log.notes,
+                } for log in logs]
+                
+                executor = get_workflow_executor()
+                
+                # Uzman notlarını query olarak ekle ki AI dikkate alsın
+                rerun_query = f"[UZMAN NOTU: {request.reviewer_notes}]" if request.reviewer_notes else None
+                
+                rerun = await executor.execute(
+                    child_id=child.id,
+                    child_name=child.name,
+                    parent_id=child.parent_id,
+                    task_type=review.task_type,
+                    logs_data=logs_data,
+                    query=rerun_query,
+                )
+                
+                rerun_result = {
+                    "rerun_success": rerun.get("success", False),
+                    "rerun_output": rerun.get("output", "")[:500],
+                    "rerun_needs_review": rerun.get("needs_human_review", False),
+                }
+                logger.info(f"🔄 Reddedilen review #{review_id} için workflow yeniden çalıştırıldı")
+        except Exception as e:
+            logger.error(f"⚠️ Yeniden çalıştırma hatası: {e}")
+            rerun_result = {"rerun_success": False, "rerun_error": str(e)}
+    
+    result = {
+        "id": review.id,
+        "status": review.status,
+        "reviewer_notes": review.reviewer_notes,
+        "reviewed_at": review.reviewed_at.isoformat() if review.reviewed_at else None,
+    }
+    
+    if rerun_result:
+        result["rerun"] = rerun_result
+    
+    return result
+
+
+@router.post("/v2/reviews/create")
+def create_review(
+    request: ReviewCreateRequest,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Manuel Onay Kaydı Oluştur
+    
+    NEDEN: Workflow otomatik review oluştururken, bazen manuel olarak
+    da bir çıktının gözden geçirilmesi istenebilir.
+    """
+    _require_admin(current_user)
+    from app.models.human_review import HumanReview
+    
+    review = HumanReview(
+        workflow_id=request.workflow_id,
+        child_id=request.child_id,
+        task_type=request.task_type,
+        ai_output=request.ai_output,
+        confidence_score=request.confidence_score,
+        status="pending",
+    )
+    
+    db.add(review)
+    db.commit()
+    db.refresh(review)
+    
+    return {
+        "id": review.id,
+        "status": "pending",
+        "created_at": review.created_at.isoformat() if review.created_at else None,
+    }

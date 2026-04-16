@@ -9,6 +9,7 @@ export default function Register() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [role, setRole] = useState<'user' | 'admin'>('user')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -17,7 +18,7 @@ export default function Register() {
     setError('')
     setLoading(true)
     try {
-      await register(email, name, password)
+      await register(email, name, password, role)
       navigate('/dashboard')
     } catch {
       setError('Kayıt olurken hata oluştu. Email zaten kullanımda olabilir.')
@@ -143,6 +144,37 @@ export default function Register() {
                   onFocus={e => { e.target.style.borderColor = '#0891B2'; e.target.style.boxShadow = '0 0 0 4px rgba(8,145,178,0.1)' }}
                   onBlur={e => { e.target.style.borderColor = '#E5E7EB'; e.target.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)' }}
                 />
+              </div>
+            </div>
+
+            {/* Rol Seçimi */}
+            <div style={{ marginBottom: 18 }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 8, letterSpacing: 0.3 }}>HESAP TÜRÜ</label>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button type="button" onClick={() => setRole('user')}
+                  style={{
+                    flex: 1, padding: '14px 12px', borderRadius: 14,
+                    border: role === 'user' ? '2px solid #0891B2' : '2px solid #E5E7EB',
+                    background: role === 'user' ? 'linear-gradient(135deg, #ECFEFF, #F0FDFA)' : 'white',
+                    cursor: 'pointer', transition: 'all 0.2s',
+                    boxShadow: role === 'user' ? '0 0 0 4px rgba(8,145,178,0.1)' : '0 2px 8px rgba(0,0,0,0.04)'
+                  }}>
+                  <div style={{ fontSize: 22, marginBottom: 4 }}>👨‍👩‍👧</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: role === 'user' ? '#0891B2' : '#374151' }}>Ebeveyn</div>
+                  <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>Çocuk takibi</div>
+                </button>
+                <button type="button" onClick={() => setRole('admin')}
+                  style={{
+                    flex: 1, padding: '14px 12px', borderRadius: 14,
+                    border: role === 'admin' ? '2px solid #0891B2' : '2px solid #E5E7EB',
+                    background: role === 'admin' ? 'linear-gradient(135deg, #ECFEFF, #F0FDFA)' : 'white',
+                    cursor: 'pointer', transition: 'all 0.2s',
+                    boxShadow: role === 'admin' ? '0 0 0 4px rgba(8,145,178,0.1)' : '0 2px 8px rgba(0,0,0,0.04)'
+                  }}>
+                  <div style={{ fontSize: 22, marginBottom: 4 }}>🩺</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: role === 'admin' ? '#0891B2' : '#374151' }}>Terapist / Uzman</div>
+                  <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>AI raporlarını incele</div>
+                </button>
               </div>
             </div>
 

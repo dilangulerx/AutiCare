@@ -12,6 +12,7 @@ class UserRegister(BaseModel):
     email: EmailStr
     name: str
     password: str
+    role: Optional[str] = "user"  # "user" (ebeveyn) veya "admin" (terapist/uzman)
 
 class UserLogin(BaseModel):
     email: EmailStr

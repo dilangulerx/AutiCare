@@ -19,7 +19,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 
 @router.post("/register", response_model=UserResponse)
 def register(data: UserRegister, db: Session = Depends(get_db)):
-    user = register_user(db, data.email, data.name, data.password)
+    user = register_user(db, data.email, data.name, data.password, data.role or "user")
     if not user:
         raise HTTPException(status_code=400, detail="Bu email zaten kayıtlı")
     return user

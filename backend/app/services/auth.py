@@ -28,13 +28,18 @@ def get_user_by_email(db: Session, email: str):
 def get_user_by_id(db: Session, user_id: int):
     return db.query(User).filter(User.id == user_id).first()
 
-def register_user(db: Session, email: str, name: str, password: str):
+def register_user(db: Session, email: str, name: str, password: str, role: str = "user"):
     if get_user_by_email(db, email):
         return None
+    # Rol doğrulama — sadece izin verilen roller
+    from app.models.user import UserRole
+    if role not in [r.value for r in UserRole]:
+        role = "user"
     user = User(
         email=email,
         name=name,
-        hashed_password=hash_password(password)
+        hashed_password=hash_password(password),
+        role=UserRole(role),
     )
     db.add(user)
     db.commit()
