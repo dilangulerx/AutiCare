@@ -58,7 +58,7 @@ class AutiCareState(TypedDict):
     error_message: Optional[str]
     metadata: Dict[str, Any]
     should_end: bool
-    # Yeni alanlar — Agentic AI Modernizasyonu
+    # Agentic AI Modernizasyonu
     search_results: Optional[List[Dict[str, Any]]]
     literature_findings: Optional[str]
     needs_human_review: bool
@@ -141,20 +141,7 @@ def init_state(
     logs_data: Optional[List[Dict]] = None,
     query: Optional[str] = None,
 ) -> AutiCareState:
-    """
-    Yeni bir iş akışı için durum başlatır
-    
-    Args:
-        child_id: Çocuk ID'si
-        child_name: Çocuk adı
-        parent_id: Ebeveyn ID'si
-        task_type: Görev türü
-        logs_data: İsteğe bağlı günlük verileri
-        query: Ebeveynin sorusu (sohbet görevleri için)
-    
-    Returns:
-        AutiCareState: Başlatılmış durum
-    """
+
     return AutiCareState(
         messages=[],
         child_id=child_id,

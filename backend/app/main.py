@@ -6,8 +6,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
+
+# Configuration ve validation yükle (startup'ta kritik ayarları kontrol et)
+from app.config import settings
+
 # CrewAI 1.x: appdirs ile yerel veri yolu; yoksa cwd adı kullanılır (ör. "backend")
-os.environ.setdefault("CREWAI_STORAGE_DIR", "AutiCare")
+os.environ.setdefault("CREWAI_STORAGE_DIR", settings.CREWAI_STORAGE_DIR)
 
 from app.database import create_tables
 from app.routers import auth, children, daily_logs, weekly_reports, reminders
@@ -26,7 +30,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

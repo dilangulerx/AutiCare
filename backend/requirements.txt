@@ -5,6 +5,7 @@ sqlalchemy==2.0.36
 pymysql==1.1.1
 python-dotenv~=1.1.1
 pydantic[email]>=2.11.9,<3
+pydantic-settings>=2.0.0,<3
 python-jose[cryptography]==3.3.0
 bcrypt==4.2.0
 openai>=1.83.0,<3
