@@ -297,11 +297,11 @@ async def generate_final_output_node(state: AutiCareState) -> AutiCareState:
     
     output_parts = []
     
-    # Başlık ekle
+    # Başlık
     task_type = state["current_task"]
     output_parts.append(f"=== {state['child_name']} için {task_type.upper()} Raporu ===\n")
     
-    # İnsan onayı durumunu ekle
+    # İnsan onayı durumunu
     if state.get("needs_human_review"):
         review_status = state.get("human_review_status", "pending")
         if review_status == "pending":
@@ -315,7 +315,7 @@ async def generate_final_output_node(state: AutiCareState) -> AutiCareState:
     
     # Analiz sonuçları
     if state.get("analysis_result"):
-        output_parts.append(f"📊 Analiz Sonuçları:\n{json.dumps(state['analysis_result'], ensure_ascii=False, indent=2)}\n")
+        output_parts.append(f" Analiz Sonuçları:\n{json.dumps(state['analysis_result'], ensure_ascii=False, indent=2)}\n")
     
     # Anormallikler
     if state.get("anomalies"):

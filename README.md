@@ -1,11 +1,8 @@
 # 🧩 AutiCare — Autism Development Tracker
 
-
-
 **A full-stack web application for tracking the daily behavioral development of children with Autism Spectrum Disorder (ASD).**
 
-https://vercel.com/dilangulerxs-projects/auti-care
-
+[https://vercel.com/dilangulerxs-projects/auti-care](https://vercel.com/dilangulerxs-projects/auti-care)
 
 ---
 
@@ -25,21 +22,24 @@ AutiCare helps parents and caregivers of children with ASD to:
 
 ## ✨ Features
 
-| Feature | Description |
-|---|---|
-| 🔐 **Secure Auth** | JWT-based login & registration with bcrypt password hashing |
-| 👶 **Multi-child Profiles** | Manage multiple children under one account |
-| 📝 **Daily Log** | Slider-based metric entry for 4 behavioral dimensions |
-| 🤖 **AI Weekly Reports** | GPT-4 generated reports with insights & recommendations |
-| 🔔 **Smart Reminders** | Medication, therapy & activity reminders with email delivery |
-| ⚙️ **User Settings** | Update name, email, phone, password + dark mode toggle |
-| 📊 **Overview Dashboard** | Summary cards, trend averages, recent log & report preview |
+
+| Feature                     | Description                                                  |
+| --------------------------- | ------------------------------------------------------------ |
+| 🔐 **Secure Auth**          | JWT-based login & registration with bcrypt password hashing  |
+| 👶 **Multi-child Profiles** | Manage multiple children under one account                   |
+| 📝 **Daily Log**            | Slider-based metric entry for 4 behavioral dimensions        |
+| 🤖 **AI Weekly Reports**    | GPT-4 generated reports with insights & recommendations      |
+| 🔔 **Smart Reminders**      | Medication, therapy & activity reminders with email delivery |
+| ⚙️ **User Settings**        | Update name, email, phone, password + dark mode toggle       |
+| 📊 **Overview Dashboard**   | Summary cards, trend averages, recent log & report preview   |
+
 
 ---
 
 ## 🛠 Tech Stack
 
 ### Backend
+
 - **[FastAPI](https://fastapi.tiangolo.com/)** — Modern Python web framework with auto OpenAPI docs
 - **[SQLAlchemy](https://www.sqlalchemy.org/)** — ORM for database interactions
 - **[MySQL 8.0](https://www.mysql.com/)** — Relational database
@@ -50,6 +50,7 @@ AutiCare helps parents and caregivers of children with ASD to:
 - **[APScheduler](https://apscheduler.readthedocs.io/)** — Scheduled reminder jobs
 
 ### Frontend
+
 - **[React 18](https://react.dev/)** + **[Vite](https://vitejs.dev/)** — Fast development environment
 - **[TypeScript](https://www.typescriptlang.org/)** — Static type safety
 - **[React Router DOM](https://reactrouter.com/)** — Client-side routing
@@ -57,6 +58,7 @@ AutiCare helps parents and caregivers of children with ASD to:
 - **[Tailwind CSS v4](https://tailwindcss.com/)** — Utility-first styling
 
 ### Infrastructure
+
 - **[Docker](https://www.docker.com/)** + **[Docker Compose](https://docs.docker.com/compose/)** — Containerized services
 
 ---
@@ -134,6 +136,7 @@ cd autism-tracker
 ```
 
 ### 2. Create environment file
+
 ```bash
 cp .env.example .env
 
@@ -145,7 +148,8 @@ docker-compose up -d
 ```
 
 This starts:
-- `autism_backend` on **http://localhost:8000**
+
+- `autism_backend` on **[http://localhost:8000](http://localhost:8000)**
 - `autism_db` (MySQL) on **localhost:3307**
 
 ### 4. Install frontend dependencies & start
@@ -156,7 +160,7 @@ npm install
 npm run dev
 ```
 
-Frontend runs on **http://localhost:5173**
+Frontend runs on **[http://localhost:5173](http://localhost:5173)**
 
 ### 5. Verify everything is running
 
@@ -192,45 +196,60 @@ RESEND_API_KEY=re_...
 
 ## 📡 API Reference
 
-Full interactive documentation available at **http://localhost:8000/docs** (Swagger UI).
+Full interactive documentation available at **[http://localhost:8000/docs](http://localhost:8000/docs)** (Swagger UI).
 
 ### Authentication
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/auth/register` | Create new account |
-| `POST` | `/auth/login` | Login → returns JWT token |
-| `GET` | `/auth/me` | Get current user info |
-| `PUT` | `/auth/me` | Update name, email, phone, password |
+
+
+| Method | Endpoint         | Description                         |
+| ------ | ---------------- | ----------------------------------- |
+| `POST` | `/auth/register` | Create new account                  |
+| `POST` | `/auth/login`    | Login → returns JWT token           |
+| `GET`  | `/auth/me`       | Get current user info               |
+| `PUT`  | `/auth/me`       | Update name, email, phone, password |
+
 
 ### Children
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/children` | List all children for current user |
-| `POST` | `/children` | Create child profile |
-| `PUT` | `/children/{id}` | Update child profile |
-| `DELETE` | `/children/{id}` | Delete child profile |
+
+
+| Method   | Endpoint         | Description                        |
+| -------- | ---------------- | ---------------------------------- |
+| `GET`    | `/children`      | List all children for current user |
+| `POST`   | `/children`      | Create child profile               |
+| `PUT`    | `/children/{id}` | Update child profile               |
+| `DELETE` | `/children/{id}` | Delete child profile               |
+
 
 ### Daily Logs
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/logs/child/{id}` | Get all logs for a child |
-| `POST` | `/logs` | Create new daily log |
-| `PUT` | `/logs/{id}` | Update log |
-| `DELETE` | `/logs/{id}` | Delete log |
+
+
+| Method   | Endpoint           | Description              |
+| -------- | ------------------ | ------------------------ |
+| `GET`    | `/logs/child/{id}` | Get all logs for a child |
+| `POST`   | `/logs`            | Create new daily log     |
+| `PUT`    | `/logs/{id}`       | Update log               |
+| `DELETE` | `/logs/{id}`       | Delete log               |
+
 
 ### Weekly Reports
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/reports/child/{id}` | List reports for a child |
+
+
+| Method | Endpoint                 | Description                                         |
+| ------ | ------------------------ | --------------------------------------------------- |
+| `GET`  | `/reports/child/{id}`    | List reports for a child                            |
 | `POST` | `/reports/generate/{id}` | Generate AI report (query: `week_start=YYYY-MM-DD`) |
 
+
 ### Reminders
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/reminders/child/{id}` | List reminders for a child |
-| `POST` | `/reminders` | Create reminder |
-| `PUT` | `/reminders/{id}` | Update reminder |
-| `DELETE` | `/reminders/{id}` | Delete reminder |
+
+
+| Method   | Endpoint                | Description                |
+| -------- | ----------------------- | -------------------------- |
+| `GET`    | `/reminders/child/{id}` | List reminders for a child |
+| `POST`   | `/reminders`            | Create reminder            |
+| `PUT`    | `/reminders/{id}`       | Update reminder            |
+| `DELETE` | `/reminders/{id}`       | Delete reminder            |
+
 
 ---
 
@@ -242,7 +261,6 @@ This project includes a planning document for the future integration of a **Conv
 - Detect anomalies when metrics deviate significantly from personal baseline
 - Suggest daily activities based on recent behavioral patterns
 - Generate structured therapy briefs for professional consultations
-
 
 ### Planned Architecture
 
@@ -297,11 +315,9 @@ docker exec -it autism_db mysql -u root -prootpassword autism_tracker
 
 ---
 
-
 ## ⚠️ Disclaimer
 
 AutiCare is **not** a medical application. It does not provide clinical diagnoses or replace professional medical advice. All AI-generated reports are informational only and should be reviewed with a qualified healthcare provider.
 
 ---
 
-</div>
