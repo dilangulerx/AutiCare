@@ -136,7 +136,7 @@ def check_anomaly(
 
 
 # ============================================================================
-# LANGGRAPH HİBRİT AI ENDPOINTS (YENİ NESIL)
+# LANGGRAPH HİBRİT AI ENDPOINTS
 # ============================================================================
 
 @router.post("/v2/workflow/{child_id}", response_model=WorkflowResponse)

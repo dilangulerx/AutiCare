@@ -15,3 +15,5 @@ backend/venv/
 .env
 backend/.env
 .env.*
+__pycache__/
+*.pyc
