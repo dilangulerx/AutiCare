@@ -4,10 +4,27 @@ export interface DailyLog {
   id: number
   child_id: number
   date: string
-  eye_contact: number
-  aggression_level: number
-  communication_score: number
-  sleep_hours: number
+  eye_contact?: number
+  aggression_level?: number
+  communication_score?: number
+  sleep_hours?: number
+  sleep_start_time?: string
+  sleep_end_time?: string
+  sleep_interruptions?: number
+  eye_contact_frequency?: number
+  eye_contact_duration_seconds?: number
+  eye_contact_context?: string
+  aggression_frequency?: number
+  aggression_duration_minutes?: number
+  aggression_trigger?: string
+  communication_mode?: 'verbal' | 'non_verbal' | 'mixed'
+  communication_function?: string
+  communication_effectiveness?: number
+  antecedent?: string
+  behavior?: string
+  consequence?: string
+  sensory_trigger?: string
+  gi_notes?: string
   notes?: string
 }
 

@@ -32,6 +32,7 @@ class WorkflowRequest(BaseModel):
     task_type: str  # "report", "chat", "anomaly", "analysis", "deep_analysis", "literature_review", "parent_support"
     query: Optional[str] = None
     streaming: bool = False
+    workflow_id: Optional[str] = None
 
 
 class WorkflowResponse(BaseModel):
@@ -45,6 +46,7 @@ class WorkflowResponse(BaseModel):
     execution_time: float
     error: Optional[str] = None
     # Yeni alanlar
+    workflow_id: Optional[str] = None
     needs_human_review: bool = False
     human_review_status: Optional[str] = None
     confidence_score: Optional[float] = None
@@ -212,6 +214,7 @@ async def execute_workflow(
             logs_data=logs_data,
             query=request.query,
             streaming=request.streaming,
+            workflow_id=request.workflow_id,
         )
         
         end_time = datetime.now()
@@ -242,6 +245,7 @@ async def execute_workflow(
             recommendations=result.get("recommendations"),
             execution_time=execution_time,
             error=result.get("error"),
+            workflow_id=result.get("workflow_id"),
             needs_human_review=result.get("needs_human_review", False),
             human_review_status=result.get("human_review_status"),
             confidence_score=result.get("confidence_score"),
@@ -526,48 +530,25 @@ async def update_review(
     
     logger.info(f"✓ Onay güncellendi: #{review_id} → {request.status}")
     
-    # ── REJECTED → Workflow'u uzman notlarıyla yeniden çalıştır ──
+    # Review kararı sonrası checkpoint'ten workflow'u devam ettir
     rerun_result = None
-    if request.status == "rejected":
-        try:
-            child = db.query(Child).filter(Child.id == review.child_id).first()
-            if child:
-                logs = db.query(DailyLog).filter(
-                    DailyLog.child_id == child.id
-                ).order_by(DailyLog.date.desc()).limit(30).all()
-                
-                logs_data = [{
-                    "date": str(log.date),
-                    "eye_contact": log.eye_contact,
-                    "communication_score": log.communication_score,
-                    "aggression_level": log.aggression_level,
-                    "sleep_hours": log.sleep_hours,
-                    "behavioral_notes": log.notes,
-                } for log in logs]
-                
-                executor = get_workflow_executor()
-                
-                # Uzman notlarını query olarak ekle ki AI dikkate alsın
-                rerun_query = f"[UZMAN NOTU: {request.reviewer_notes}]" if request.reviewer_notes else None
-                
-                rerun = await executor.execute(
-                    child_id=child.id,
-                    child_name=child.name,
-                    parent_id=child.parent_id,
-                    task_type=review.task_type,
-                    logs_data=logs_data,
-                    query=rerun_query,
-                )
-                
-                rerun_result = {
-                    "rerun_success": rerun.get("success", False),
-                    "rerun_output": rerun.get("output", "")[:500],
-                    "rerun_needs_review": rerun.get("needs_human_review", False),
-                }
-                logger.info(f"🔄 Reddedilen review #{review_id} için workflow yeniden çalıştırıldı")
-        except Exception as e:
-            logger.error(f"⚠️ Yeniden çalıştırma hatası: {e}")
-            rerun_result = {"rerun_success": False, "rerun_error": str(e)}
+    try:
+        executor = get_workflow_executor()
+        resumed = await executor.resume_after_review(
+            workflow_id=review.workflow_id,
+            status=request.status,
+            reviewer_notes=request.reviewer_notes,
+            modified_output=request.modified_output,
+        )
+        rerun_result = {
+            "rerun_success": resumed.get("success", False),
+            "rerun_output": resumed.get("output", "")[:500],
+            "rerun_needs_review": resumed.get("needs_human_review", False),
+            "workflow_id": resumed.get("workflow_id"),
+        }
+    except Exception as e:
+        logger.error(f"⚠️ Workflow resume hatası: {e}")
+        rerun_result = {"rerun_success": False, "rerun_error": str(e)}
     
     result = {
         "id": review.id,

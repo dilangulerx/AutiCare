@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import type { WorkflowResponse } from '../api/ai'
 import {
-  executeWorkflow,
   generateWeeklyReport,
   chatWithAssistant,
   detectAnomalies,

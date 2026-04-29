@@ -528,40 +528,7 @@ async def human_review_node(state: AutiCareState) -> AutiCareState:
             "reason": _get_review_reason(confidence, state),
         }
         state["metadata"]["review_summary"] = review_summary
-        
-        # ── VERITABANINA HITL KAYDI OLUŞTUR ──
-        try:
-            from app.database import SessionLocal
-            from app.models.human_review import HumanReview
-            import json as _json
-            
-            db = SessionLocal()
-            try:
-                # AI çıktısını topla
-                ai_output = state.get("final_output") or ""
-                if not ai_output and state.get("analysis_result"):
-                    ai_output = _json.dumps(state["analysis_result"], ensure_ascii=False)
-                
-                workflow_id = state["metadata"].get("created_at", "unknown")
-                
-                review_record = HumanReview(
-                    workflow_id=f"wf_{state['child_id']}_{workflow_id}",
-                    child_id=state["child_id"],
-                    task_type=state["current_task"],
-                    ai_output=ai_output,
-                    confidence_score=confidence,
-                    status="pending",
-                )
-                db.add(review_record)
-                db.commit()
-                
-                state["metadata"]["review_id"] = review_record.id
-                logger.info(f"✓ HumanReview kaydı oluşturuldu: #{review_record.id}")
-            finally:
-                db.close()
-        except Exception as e:
-            logger.error(f"⚠️ HumanReview kaydı oluşturulamadı: {e}")
-        
+
         state["messages"].append(
             AIMessage(content=f"👤 İnsan onayı bekleniyor (Güven: {confidence:.0%}). Sebep: {review_summary['reason']}")
         )

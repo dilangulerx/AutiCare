@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { AutiCareLogoHorizontal } from '../components/AutiCareLogo'
-import { WorkflowTrigger } from '../components/WorkflowTrigger'
 import { HumanReviewPanel } from '../components/HumanReviewPanel'
 import type { Child } from '../api/children'
 import { getChildren, createChild } from '../api/children'
@@ -34,7 +33,31 @@ export default function Dashboard() {
   const [newChildBirth, setNewChildBirth] = useState('')
   const [newChildNotes, setNewChildNotes] = useState('')
 
-  const [logForm, setLogForm] = useState({ eye_contact: 3, aggression_level: 1, communication_score: 3, sleep_hours: 8, notes: '', date: new Date().toISOString().split('T')[0] })
+  const [logForm, setLogForm] = useState({
+    eye_contact: 3,
+    aggression_level: 1,
+    communication_score: 3,
+    sleep_hours: 8,
+    date: new Date().toISOString().split('T')[0],
+    sleep_start_time: '',
+    sleep_end_time: '',
+    sleep_interruptions: 0,
+    eye_contact_frequency: 0,
+    eye_contact_duration_seconds: 0,
+    eye_contact_context: '',
+    aggression_frequency: 0,
+    aggression_duration_minutes: 0,
+    aggression_trigger: '',
+    communication_mode: 'mixed' as 'verbal' | 'non_verbal' | 'mixed',
+    communication_function: '',
+    communication_effectiveness: 3,
+    antecedent: '',
+    behavior: '',
+    consequence: '',
+    sensory_trigger: '',
+    gi_notes: '',
+    notes: '',
+  })
   const [logSaving, setLogSaving] = useState(false)
   const [logSuccess, setLogSuccess] = useState(false)
 
@@ -123,10 +146,33 @@ export default function Dashboard() {
     setLogSaving(true)
     setLogError('')
     try {
-      const today = new Date().toISOString().split('T')[0]
-      await createLog({ ...logForm, child_id: selectedChild.id, date: today })
+      await createLog({ ...logForm, child_id: selectedChild.id, date: logForm.date })
       setLogSuccess(true)
-      setLogForm({ eye_contact: 3, aggression_level: 1, communication_score: 3, sleep_hours: 8, notes: '', date: new Date().toISOString().split('T')[0] })
+      setLogForm({
+        eye_contact: 3,
+        aggression_level: 1,
+        communication_score: 3,
+        sleep_hours: 8,
+        date: new Date().toISOString().split('T')[0],
+        sleep_start_time: '',
+        sleep_end_time: '',
+        sleep_interruptions: 0,
+        eye_contact_frequency: 0,
+        eye_contact_duration_seconds: 0,
+        eye_contact_context: '',
+        aggression_frequency: 0,
+        aggression_duration_minutes: 0,
+        aggression_trigger: '',
+        communication_mode: 'mixed',
+        communication_function: '',
+        communication_effectiveness: 3,
+        antecedent: '',
+        behavior: '',
+        consequence: '',
+        sensory_trigger: '',
+        gi_notes: '',
+        notes: '',
+      })
       setTimeout(() => setLogSuccess(false), 3000)
       loadChildData(selectedChild.id)
     } catch (e: unknown) { 
@@ -533,10 +579,10 @@ export default function Dashboard() {
                               <div key={item.label} style={{ marginBottom: 10 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                                   <span style={{ fontSize: 12, color: '#374151' }}>{item.label}</span>
-                                  <span style={{ fontSize: 12, fontWeight: 600, color: '#0D4F4F' }}>{item.value}/{item.max}</span>
+                                  <span style={{ fontSize: 12, fontWeight: 600, color: '#0D4F4F' }}>{item.value ?? 0}/{item.max}</span>
                                 </div>
                                 <div style={{ height: 6, background: '#F3F4F6', borderRadius: 4 }}>
-                                  <div style={{ height: '100%', borderRadius: 4, background: 'linear-gradient(90deg, #0891B2, #5BB8D4)', width: `${(item.value / item.max) * 100}%` }} />
+                                  <div style={{ height: '100%', borderRadius: 4, background: 'linear-gradient(90deg, #0891B2, #5BB8D4)', width: `${((Number(item.value) || 0) / item.max) * 100}%` }} />
                                 </div>
                               </div>
                             ))}
@@ -615,14 +661,113 @@ export default function Dashboard() {
                         </div>
 
                       <div style={{ marginBottom: 24 }}>
-                        <label style={{ fontWeight: 600, color: '#0D4F4F', fontSize: 14, display: 'block', marginBottom: 8 }}>😴 Uyku Süresi</label>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <label style={{ fontWeight: 600, color: '#0D4F4F', fontSize: 14, display: 'block', marginBottom: 8 }}>😴 Uyku Detayı</label>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
                           <input type="number" min={0} max={24} step={0.5} value={logForm.sleep_hours}
                             onChange={e => setLogForm({ ...logForm, sleep_hours: Number(e.target.value) })}
-                            style={{ width: 100, padding: '10px 14px', borderRadius: 10, border: '2px solid #E5E7EB', fontSize: 15, fontWeight: 600, color: '#0D4F4F', outline: 'none' }}
+                            placeholder="Saat"
+                            style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '2px solid #E5E7EB', fontSize: 13, outline: 'none' }}
                           />
-                          <span style={{ color: '#6B7280', fontSize: 14 }}>saat</span>
+                          <input type="time" value={logForm.sleep_start_time}
+                            onChange={e => setLogForm({ ...logForm, sleep_start_time: e.target.value })}
+                            style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '2px solid #E5E7EB', fontSize: 13, outline: 'none' }}
+                          />
+                          <input type="time" value={logForm.sleep_end_time}
+                            onChange={e => setLogForm({ ...logForm, sleep_end_time: e.target.value })}
+                            style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '2px solid #E5E7EB', fontSize: 13, outline: 'none' }}
+                          />
                         </div>
+                        <input type="number" min={0} max={20} step={1} value={logForm.sleep_interruptions}
+                          onChange={e => setLogForm({ ...logForm, sleep_interruptions: Number(e.target.value) })}
+                          placeholder="Gece uyanma/kesinti sayısı"
+                          style={{ width: '100%', marginTop: 10, padding: '10px 14px', borderRadius: 10, border: '2px solid #E5E7EB', fontSize: 13, outline: 'none' }}
+                        />
+                      </div>
+
+                      <div style={{ marginBottom: 24 }}>
+                        <label style={{ fontWeight: 600, color: '#0D4F4F', fontSize: 14, display: 'block', marginBottom: 8 }}>👁️ Göz Teması (Klinik)</label>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                          <input type="number" min={0} value={logForm.eye_contact_frequency}
+                            onChange={e => setLogForm({ ...logForm, eye_contact_frequency: Number(e.target.value) })}
+                            placeholder="Frekans (kez)"
+                            style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '2px solid #E5E7EB', fontSize: 13, outline: 'none' }}
+                          />
+                          <input type="number" min={0} step={0.5} value={logForm.eye_contact_duration_seconds}
+                            onChange={e => setLogForm({ ...logForm, eye_contact_duration_seconds: Number(e.target.value) })}
+                            placeholder="Süre (sn)"
+                            style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '2px solid #E5E7EB', fontSize: 13, outline: 'none' }}
+                          />
+                        </div>
+                        <input value={logForm.eye_contact_context}
+                          onChange={e => setLogForm({ ...logForm, eye_contact_context: e.target.value })}
+                          placeholder="Bağlam (örn: ismi söylendiğinde, yemek sırasında)"
+                          style={{ width: '100%', marginTop: 10, padding: '10px 14px', borderRadius: 10, border: '2px solid #E5E7EB', fontSize: 13, outline: 'none' }}
+                        />
+                      </div>
+
+                      <div style={{ marginBottom: 24 }}>
+                        <label style={{ fontWeight: 600, color: '#0D4F4F', fontSize: 14, display: 'block', marginBottom: 8 }}>😤 Agresyon (Detay)</label>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                          <input type="number" min={0} value={logForm.aggression_frequency}
+                            onChange={e => setLogForm({ ...logForm, aggression_frequency: Number(e.target.value) })}
+                            placeholder="Frekans"
+                            style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '2px solid #E5E7EB', fontSize: 13, outline: 'none' }}
+                          />
+                          <input type="number" min={0} step={0.5} value={logForm.aggression_duration_minutes}
+                            onChange={e => setLogForm({ ...logForm, aggression_duration_minutes: Number(e.target.value) })}
+                            placeholder="Süre (dk)"
+                            style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '2px solid #E5E7EB', fontSize: 13, outline: 'none' }}
+                          />
+                        </div>
+                        <input value={logForm.aggression_trigger}
+                          onChange={e => setLogForm({ ...logForm, aggression_trigger: e.target.value })}
+                          placeholder="Tetikleyici"
+                          style={{ width: '100%', marginTop: 10, padding: '10px 14px', borderRadius: 10, border: '2px solid #E5E7EB', fontSize: 13, outline: 'none' }}
+                        />
+                      </div>
+
+                      <div style={{ marginBottom: 24 }}>
+                        <label style={{ fontWeight: 600, color: '#0D4F4F', fontSize: 14, display: 'block', marginBottom: 8 }}>💬 İletişim (Detay)</label>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                          <select value={logForm.communication_mode} onChange={e => setLogForm({ ...logForm, communication_mode: e.target.value as 'verbal' | 'non_verbal' | 'mixed' })}
+                            style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '2px solid #E5E7EB', fontSize: 13, outline: 'none' }}>
+                            <option value="mixed">Karma</option>
+                            <option value="verbal">Sözel</option>
+                            <option value="non_verbal">Sözel olmayan</option>
+                          </select>
+                          <input type="number" min={1} max={5} value={logForm.communication_effectiveness}
+                            onChange={e => setLogForm({ ...logForm, communication_effectiveness: Number(e.target.value) })}
+                            placeholder="Etkililik (1-5)"
+                            style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '2px solid #E5E7EB', fontSize: 13, outline: 'none' }}
+                          />
+                        </div>
+                        <input value={logForm.communication_function}
+                          onChange={e => setLogForm({ ...logForm, communication_function: e.target.value })}
+                          placeholder="Fonksiyon (istek, reddetme, yorum, vb.)"
+                          style={{ width: '100%', marginTop: 10, padding: '10px 14px', borderRadius: 10, border: '2px solid #E5E7EB', fontSize: 13, outline: 'none' }}
+                        />
+                      </div>
+
+                      <div style={{ marginBottom: 24 }}>
+                        <label style={{ fontWeight: 600, color: '#0D4F4F', fontSize: 14, display: 'block', marginBottom: 8 }}>🧩 ABC Kaydı</label>
+                        <textarea value={logForm.antecedent} onChange={e => setLogForm({ ...logForm, antecedent: e.target.value })} placeholder="A (Öncesi): Davranıştan önce ne oldu?"
+                          style={{ width: '100%', marginBottom: 8, padding: '10px 14px', borderRadius: 10, border: '2px solid #E5E7EB', fontSize: 13, minHeight: 64, resize: 'vertical', fontFamily: 'inherit' }} />
+                        <textarea value={logForm.behavior} onChange={e => setLogForm({ ...logForm, behavior: e.target.value })} placeholder="B (Davranış): Gözlenen davranışın kendisi"
+                          style={{ width: '100%', marginBottom: 8, padding: '10px 14px', borderRadius: 10, border: '2px solid #E5E7EB', fontSize: 13, minHeight: 64, resize: 'vertical', fontFamily: 'inherit' }} />
+                        <textarea value={logForm.consequence} onChange={e => setLogForm({ ...logForm, consequence: e.target.value })} placeholder="C (Sonuç): Davranış sonrası ne oldu?"
+                          style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '2px solid #E5E7EB', fontSize: 13, minHeight: 64, resize: 'vertical', fontFamily: 'inherit' }} />
+                      </div>
+
+                      <div style={{ marginBottom: 24 }}>
+                        <label style={{ fontWeight: 600, color: '#0D4F4F', fontSize: 14, display: 'block', marginBottom: 8 }}>🫧 Duyusal / GI Notları</label>
+                        <input value={logForm.sensory_trigger} onChange={e => setLogForm({ ...logForm, sensory_trigger: e.target.value })}
+                          placeholder="Duyusal tetikleyiciler (ışık/ses/dokunma)"
+                          style={{ width: '100%', marginBottom: 8, padding: '10px 14px', borderRadius: 10, border: '2px solid #E5E7EB', fontSize: 13, outline: 'none' }}
+                        />
+                        <input value={logForm.gi_notes} onChange={e => setLogForm({ ...logForm, gi_notes: e.target.value })}
+                          placeholder="GI notları (kabızlık/ishal, besin hassasiyeti, vb.)"
+                          style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '2px solid #E5E7EB', fontSize: 13, outline: 'none' }}
+                        />
                       </div>
 
                       <div style={{ marginBottom: 28 }}>
