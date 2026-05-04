@@ -9,3 +9,5 @@ steps:
       - 'backend'
 images:
   - '$_IMAGE_NAME'
+options:
+  logging: CLOUD_LOGGING_ONLY
