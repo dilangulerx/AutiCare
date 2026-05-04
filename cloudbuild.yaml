@@ -3,11 +3,11 @@ steps:
     args:
       - 'build'
       - '-t'
-      - '$_IMAGE_NAME'
+      - 'europe-west1-docker.pkg.dev/project-11c88d7b-34b1-4178-af8/cloud-run-source-deploy/auticare/auti-care:latest'
       - '-f'
       - 'backend/Dockerfile'
       - 'backend'
 images:
-  - '$_IMAGE_NAME'
+  - 'europe-west1-docker.pkg.dev/project-11c88d7b-34b1-4178-af8/cloud-run-source-deploy/auticare/auti-care:latest'
 options:
   logging: CLOUD_LOGGING_ONLY
