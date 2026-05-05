@@ -379,7 +379,7 @@ docker exec -it autism_db mysql -u root -prootpassword autism_tracker
 
 You can add your screenshots using this section:
 
-```md
+
 ## Screenshots
 
 ### Login & Register
@@ -390,7 +390,7 @@ You can add your screenshots using this section:
 ### Dashboard & Navigation
 > Ana kontrol paneli ve henüz çocuk eklenmemiş görünüm.
 
-![Dashboard](./docs/images/dashboard.png)
+![Dashboard](./docs/images/anaekran.png)
 ![Empty State](./docs/images/GenelBakis.png)
 
 ### Daily Records (Günlük Kayıt)
