@@ -377,7 +377,6 @@ docker exec -it autism_db mysql -u root -prootpassword autism_tracker
 
 ## Screenshots
 
-You can add your screenshots using this section:
 
 ```md
 ## Screenshots
