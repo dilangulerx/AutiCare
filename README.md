@@ -382,18 +382,48 @@ You can add your screenshots using this section:
 ```md
 ## Screenshots
 
-### Login Page
-![Login](./docs/screenshots/login.png)
+### Login & Register
+| Login Page | Register Page |
+|------------|---------------|
+| ![Login](./docs/images/login.png) | ![Register](./docs/images/register.png) |
 
-### Dashboard
-![Dashboard](./docs/screenshots/dashboard.png)
+### Dashboard & Navigation
+> Ana kontrol paneli ve henüz çocuk eklenmemiş görünüm.
 
-### Child Profile
-![Child Profile](./docs/screenshots/child-profile.png)
+![Dashboard](./docs/images/dashboard.png)
+![Empty State](./docs/images/GenelBakis.png)
 
-### AI Workflow / Report
-![AI Workflow](./docs/screenshots/ai-workflow.png)
-```
+### Daily Records (Günlük Kayıt)
+> Göz teması, iletişim skoru ve agresyon seviyesi gibi verilerin giriş ekranı.
+
+| Scores and Sleep | Clinical Observation and Details | ABC Record and Notes |
+|:---:|:---:|:---:|
+| ![Daily Record 1](./docs/images/gunlukKayit1.png) | ![Daily Record 2](./docs/images/gunlukKayit2.png) | ![Daily Record 3](./docs/images/gunlukKayit3.png) |
+
+### AI Features (Artificial Intelligence Features)
+> Chat with the AI Assistant and AI Approval Panel workflow.
+
+#### AI Assistant
+![AI Assistant](./docs/images/chat.png)
+
+### Reminders
+![Reminders](./docs/images/hatirlatici.png)
+
+### Settings
+> Profile information, password change and appearance settings.
+
+![Settings](./docs/images/settings.png)
+
+### AI Features (Artificial Intelligence Features)
+> AI Reports and AI Approval Panel workflow.
+
+#### AI Reports
+| Report List | Report Detail |
+|:---:|:---:|
+| ![AI Report 1](./docs/images/rapor1.png) | ![AI Report 2](./docs/images/raporr2.png) |
+
+#### AI Approval Panel
+![AI Approval](./docs/images/aiOnay.png)
 
 ---
 
@@ -407,3 +437,6 @@ This project was created for educational and product development purposes.
 
 AutiCare is not a medical device and does not provide clinical diagnosis or treatment. AI outputs are informational and should be reviewed with qualified professionals.
 
+## Author
+
+Developed by [Dilan Güler](https://github.com/dilangulerx)
