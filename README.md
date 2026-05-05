@@ -2,7 +2,7 @@
 
 AutiCare is a full-stack platform designed to track daily developmental signals of children with Autism Spectrum Disorder (ASD), support caregivers, and provide AI-assisted insights.
 
-Live preview (Netlify): [AutiCare Frontend](https://dynamic-fudge-faad4a.netlify.app/dashboard)
+Live preview (Netlify): [AutiCare](https://dynamic-fudge-faad4a.netlify.app/dashboard)
 
 ---
 
