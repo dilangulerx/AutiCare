@@ -14,7 +14,7 @@ from app.config import settings
 os.environ.setdefault("CREWAI_STORAGE_DIR", settings.CREWAI_STORAGE_DIR)
 
 from app.database import create_tables
-from app.routers import auth, children, daily_logs, weekly_reports, reminders
+from app.routers import auth, children, daily_logs, weekly_reports, reminders, mcp
 from app.services.scheduler import start_scheduler, stop_scheduler
 from app.routers import ai
 from app.monitoring import get_monitor
@@ -44,6 +44,7 @@ app.include_router(daily_logs.router)
 app.include_router(weekly_reports.router)
 app.include_router(reminders.router)
 app.include_router(ai.router)
+app.include_router(mcp.router)
 
 @app.on_event("startup")
 def startup():

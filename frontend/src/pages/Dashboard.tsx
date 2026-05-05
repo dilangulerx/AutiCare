@@ -10,7 +10,7 @@ import { getReports, generateReport } from '../api/reports'
 import type { WeeklyReport } from '../api/reports'
 import { getReminders, createReminder, deleteReminder } from '../api/reminders'
 import type { Reminder } from '../api/reminders'
-import { sendChatMessage, checkAnomaly } from '../api/ai'
+import { sendChatMessage, checkAnomaly, streamAdvisorMessage } from '../api/ai'
 
 type ActiveSection = 'overview' | 'daily-log' | 'reports' | 'reminders' | 'settings' | 'chat' | 'workflow' | 'reviews'
 
@@ -19,6 +19,7 @@ export default function Dashboard() {
 
   const notesTextareaRef = useRef<HTMLTextAreaElement>(null)
   const chatTextareaRef = useRef<HTMLTextAreaElement>(null)
+  const chatStreamCleanupRef = useRef<(() => void) | null>(null)
 
   const [children, setChildren] = useState<Child[]>([])
   const [selectedChild, setSelectedChild] = useState<Child | null>(null)
@@ -91,6 +92,14 @@ export default function Dashboard() {
   useEffect(() => {
     if (user) setSettingsForm(prev => ({ ...prev, name: user.name, email: user.email, phone: user.phone || '' }))
   }, [user])
+
+  useEffect(() => {
+    return () => {
+      if (chatStreamCleanupRef.current) {
+        chatStreamCleanupRef.current()
+      }
+    }
+  }, [])
 
   // Auto-expand textareas
   useEffect(() => {
@@ -266,12 +275,56 @@ export default function Dashboard() {
     setChatInput('')
     setChatMessages(prev => [...prev, { role: 'user', text: userMessage }])
     setChatLoading(true)
+
+    setChatMessages(prev => [...prev, { role: 'ai', text: '' }])
+
     try {
-      const res = await sendChatMessage(selectedChild.id, userMessage)
-      setChatMessages(prev => [...prev, { role: 'ai', text: res.data.response }])
-    } catch (_e) {
+      chatStreamCleanupRef.current = streamAdvisorMessage(
+        selectedChild.id,
+        userMessage,
+        {
+          onChunk: (chunkText) => {
+            setChatMessages(prev => {
+              const next = [...prev]
+              const last = next[next.length - 1]
+              if (last && last.role === 'ai') {
+                last.text = `${last.text}${chunkText}`
+              }
+              return next
+            })
+          },
+          onDone: () => {
+            setChatLoading(false)
+          },
+          onError: async () => {
+            // SSE başarısızsa mevcut klasik endpoint'e geri dön.
+            try {
+              const res = await sendChatMessage(selectedChild.id, userMessage)
+              setChatMessages(prev => {
+                const next = [...prev]
+                const last = next[next.length - 1]
+                if (last && last.role === 'ai') {
+                  last.text = res.data.response
+                }
+                return next
+              })
+            } catch {
+              setChatMessages(prev => {
+                const next = [...prev]
+                const last = next[next.length - 1]
+                if (last && last.role === 'ai') {
+                  last.text = 'Bir hata oluştu, tekrar deneyin.'
+                }
+                return next
+              })
+            } finally {
+              setChatLoading(false)
+            }
+          },
+        }
+      )
+    } catch {
       setChatMessages(prev => [...prev, { role: 'ai', text: 'Bir hata oluştu, tekrar deneyin.' }])
-    } finally {
       setChatLoading(false)
     }
   }

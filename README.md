@@ -118,6 +118,45 @@ Key capabilities:
 
 ---
 
+## MCP + Streaming Chat Architecture (Implemented)
+
+AutiCare now includes an MCP integration layer that can be used in two modes:
+
+1. **HTTP bridge mode (inside FastAPI)** for app/frontend usage
+2. **Native MCP stdio mode** for external MCP-capable agent runtimes
+
+### What Was Added
+
+- `backend/app/services/mcp_server.py`
+  - `AutiCareMCPBridge` with ownership-safe tool methods
+  - Optional FastMCP stdio server builder (`run_stdio_server`)
+- `backend/app/routers/mcp.py`
+  - `/mcp/tools`, `/mcp/call`, `/mcp/advisor`, `/mcp/advisor/stream`
+- `backend/run_mcp_server.py`
+  - Launches native MCP stdio server
+- `frontend/src/api/ai.ts`
+  - `streamAdvisorMessage(...)` SSE client helper
+- `frontend/src/pages/Dashboard.tsx`
+  - AI chat now consumes streaming advisor endpoint with fallback to legacy endpoint
+
+### End-to-End Chat Flow (Current)
+
+1. Parent sends message from Dashboard chat panel
+2. Frontend opens SSE connection to `/mcp/advisor/stream`
+3. Backend uses MCP bridge tools (`query_child_metrics`, `generate_therapy_brief`, etc.)
+4. Response is streamed in chunks (`start` -> `chunk` -> `done`)
+5. UI appends chunks live
+6. If SSE fails, frontend falls back to `POST /ai/chat/{child_id}`
+
+### Security Model
+
+- Tool calls are never direct DB access from the LLM side.
+- Every MCP tool call enforces ownership check (`parent_id`, `child_id`).
+- Unauthorized access returns `403`.
+- Invalid tool inputs return `400`.
+
+---
+
 ## API Endpoints (Quick Guide)
 
 Swagger docs: `http://localhost:8000/docs`
@@ -145,6 +184,40 @@ Swagger docs: `http://localhost:8000/docs`
 - `GET /ai/v2/monitoring/stats`
 - `POST /ai/v2/crew/{crew_type}/{child_id}`
 
+### MCP Integration (New)
+
+- `GET /mcp/tools` (list available MCP tools for authenticated user)
+- `POST /mcp/call` (invoke a tool safely with ownership checks)
+- `POST /mcp/advisor` (conversational advisor endpoint using MCP tools)
+- `GET /mcp/advisor/stream` (SSE-based streaming advisor response for chat UI)
+
+`/mcp/call` example body:
+
+```json
+{
+  "tool_name": "query_child_metrics",
+  "arguments": {
+    "child_id": 1,
+    "metric": "sleep_hours",
+    "days": 30
+  }
+}
+```
+
+`/mcp/advisor/stream` example request:
+
+```text
+GET /mcp/advisor/stream?token=<JWT>&child_id=1&message=Bu%20hafta%20uyku%20duzeni%20nasil
+```
+
+SSE event shape:
+
+```json
+{ "type": "start" }
+{ "type": "chunk", "text": "..." }
+{ "type": "done", "tool_result": { "...": "..." } }
+```
+
 ### Human-in-the-Loop (Admin)
 
 - `GET /ai/v2/reviews/{child_id}`
@@ -166,12 +239,19 @@ autism-tracker/
 │   │   ├── workflow_nodes.py
 │   │   ├── tools.py
 │   │   ├── routers/
+│   │   │   └── mcp.py
 │   │   ├── models/
 │   │   └── services/
+│   │       └── mcp_server.py
 │   ├── Dockerfile
-│   └── requirements.txt
+│   ├── requirements.txt
+│   └── run_mcp_server.py
 ├── frontend/
 │   ├── src/
+│   │   ├── api/
+│   │   │   └── ai.ts
+│   │   └── pages/
+│   │       └── Dashboard.tsx
 │   └── package.json
 ├── docker-compose.yml
 ├── cloudbuild.yaml
@@ -227,6 +307,34 @@ npm run dev
 ```
 
 Frontend: `http://localhost:5173`
+
+### 5) (Optional) Run native MCP stdio server
+
+If you want to connect an external MCP-capable agent runtime directly:
+
+```bash
+cd backend
+pip install -r requirements.txt
+python run_mcp_server.py
+```
+
+This starts an MCP stdio server that exposes:
+
+- `get_child_logs`
+- `query_child_metrics`
+- `get_weekly_summary`
+- `add_reminder`
+- `generate_therapy_brief`
+
+### 6) Validate streaming chat integration
+
+After backend + frontend are running:
+
+1. Login from UI
+2. Open Dashboard -> `AI Asistan`
+3. Send a question like: `Bu hafta uyku duzeni nasil?`
+4. You should see answer text streamed progressively
+5. If stream is unavailable, the app automatically uses legacy chat endpoint
 
 ---
 

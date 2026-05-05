@@ -7,6 +7,57 @@ import api from './client'
 export const sendChatMessage = (childId: number, message: string) =>
   api.post(`/ai/chat/${childId}`, { message })
 
+export const streamAdvisorMessage = (
+  childId: number,
+  message: string,
+  handlers: {
+    onStart?: () => void
+    onChunk: (text: string) => void
+    onDone?: (payload?: Record<string, unknown>) => void
+    onError?: (error: Error) => void
+  },
+  scheduleTimeIso?: string
+) => {
+  const token = localStorage.getItem('token')
+  if (!token) {
+    handlers.onError?.(new Error('Token bulunamadı. Lütfen tekrar giriş yapın.'))
+    return () => {}
+  }
+
+  const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
+  const url = new URL(`${baseUrl}/mcp/advisor/stream`)
+  url.searchParams.set('token', token)
+  url.searchParams.set('child_id', String(childId))
+  url.searchParams.set('message', message)
+  if (scheduleTimeIso) {
+    url.searchParams.set('schedule_time_iso', scheduleTimeIso)
+  }
+
+  const eventSource = new EventSource(url.toString())
+
+  eventSource.onmessage = (event) => {
+    try {
+      const payload = JSON.parse(event.data)
+      if (payload.type === 'start') handlers.onStart?.()
+      if (payload.type === 'chunk' && typeof payload.text === 'string') handlers.onChunk(payload.text)
+      if (payload.type === 'done') {
+        handlers.onDone?.(payload.tool_result)
+        eventSource.close()
+      }
+    } catch (error) {
+      handlers.onError?.(error as Error)
+      eventSource.close()
+    }
+  }
+
+  eventSource.onerror = () => {
+    handlers.onError?.(new Error('Canli yanit akisi kesildi.'))
+    eventSource.close()
+  }
+
+  return () => eventSource.close()
+}
+
 export const checkAnomaly = (childId: number) =>
   api.get(`/ai/anomaly/${childId}`)
 
