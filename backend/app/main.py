@@ -44,6 +44,7 @@ app.include_router(daily_logs.router)
 app.include_router(weekly_reports.router)
 app.include_router(reminders.router)
 app.include_router(ai.router)
+#mcp basliyorsa routersdaki mcp.py dosyasına git
 app.include_router(mcp.router)
 
 @app.on_event("startup")

@@ -120,7 +120,7 @@ def call_tool(
 
     raise HTTPException(status_code=404, detail="Bilinmeyen MCP araci")
 
-
+#kim olduguna bakılıyor gercek user mi 
 @router.post("/advisor")
 def conversational_advisor(
     request: AdvisorRequest,

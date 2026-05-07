@@ -268,7 +268,7 @@ export default function Dashboard() {
       setSettingsSaving(false)
     }
   }
-
+ //önce streaming MCP endpoint’ine gidiyor
   const handleSendChat = async () => {
     if (!selectedChild || !chatInput.trim()) return
     const userMessage = chatInput.trim()
