@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from typing import List
 from datetime import date
+import logging
 from app.database import get_db
 from app.models.daily_log import DailyLog
 from app.models.child import Child
@@ -9,6 +11,7 @@ from app.schemas.daily_log import DailyLogCreate, DailyLogUpdate, DailyLogRespon
 from app.routers.auth import get_current_user
 
 router = APIRouter(prefix="/logs", tags=["Daily Logs"])
+logger = logging.getLogger(__name__)
 
 def verify_child_owner(child_id: int, db: Session, current_user):
     child = db.query(Child).filter(Child.id == child_id, Child.parent_id == current_user.id).first()
@@ -19,11 +22,19 @@ def verify_child_owner(child_id: int, db: Session, current_user):
 @router.post("", response_model=DailyLogResponse)
 def create_log(data: DailyLogCreate, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     verify_child_owner(data.child_id, db, current_user)
-    log = DailyLog(**data.model_dump())
-    db.add(log)
-    db.commit()
-    db.refresh(log)
-    return log
+    try:
+        log = DailyLog(**data.model_dump())
+        db.add(log)
+        db.commit()
+        db.refresh(log)
+        return log
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Kayıt doğrulama hatası veya tekrarlı kayıt.") from exc
+    except SQLAlchemyError as exc:
+        db.rollback()
+        logger.error(f"create_log db hatası: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Günlük kayıt kaydedilemedi (veritabanı hatası).") from exc
 
 @router.get("/child/{child_id}", response_model=List[DailyLogResponse])
 def get_logs(child_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
@@ -44,11 +55,19 @@ def update_log(log_id: int, data: DailyLogUpdate, db: Session = Depends(get_db),
     if not log:
         raise HTTPException(status_code=404, detail="Kayıt bulunamadı")
     verify_child_owner(log.child_id, db, current_user)
-    for key, value in data.model_dump(exclude_none=True).items():
-        setattr(log, key, value)
-    db.commit()
-    db.refresh(log)
-    return log
+    try:
+        for key, value in data.model_dump(exclude_none=True).items():
+            setattr(log, key, value)
+        db.commit()
+        db.refresh(log)
+        return log
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Güncelleme doğrulama hatası.") from exc
+    except SQLAlchemyError as exc:
+        db.rollback()
+        logger.error(f"update_log db hatası: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Günlük kayıt güncellenemedi (veritabanı hatası).") from exc
 
 @router.delete("/{log_id}")
 def delete_log(log_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
