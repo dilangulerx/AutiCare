@@ -30,5 +30,19 @@ export interface DailyLog {
 
 export const getLogs = (childId: number) => api.get<DailyLog[]>(`/logs/child/${childId}`)
 export const getLogByDate = (childId: number, date: string) => api.get<DailyLog>(`/logs/child/${childId}/date/${date}`)
-export const createLog = (data: Omit<DailyLog, 'id'>) => api.post<DailyLog>('/logs', data)
+
+const normalizeEmptyStrings = <T extends Record<string, unknown>>(payload: T): T => {
+  const next = { ...payload }
+  Object.keys(next).forEach((key) => {
+    const value = next[key]
+    if (typeof value === 'string' && value.trim() === '') {
+      ;(next as Record<string, unknown>)[key] = undefined
+    }
+  })
+  return next
+}
+
+export const createLog = (data: Omit<DailyLog, 'id'>) =>
+  api.post<DailyLog>('/logs', normalizeEmptyStrings(data))
+
 export const updateLog = (id: number, data: Partial<DailyLog>) => api.put<DailyLog>(`/logs/${id}`, data)
