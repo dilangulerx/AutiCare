@@ -83,6 +83,34 @@ export default function Dashboard() {
 
   const [anomaly, setAnomaly] = useState<{has_anomaly: boolean, message: string} | null>(null)
 
+  const formatApiError = (error: unknown, fallback: string) => {
+    const err = error as any
+    const detail = err?.response?.data?.detail
+
+    if (typeof detail === 'string' && detail.trim()) {
+      return detail
+    }
+
+    if (Array.isArray(detail)) {
+      const messages = detail
+        .map((item) => item?.msg)
+        .filter((msg): msg is string => typeof msg === 'string' && msg.trim().length > 0)
+      if (messages.length > 0) {
+        return messages.join(', ')
+      }
+    }
+
+    if (detail && typeof detail === 'object' && typeof detail.msg === 'string') {
+      return detail.msg
+    }
+
+    if (typeof err?.message === 'string' && err.message.trim()) {
+      return err.message
+    }
+
+    return fallback
+  }
+
   useEffect(() => { loadChildren() }, [])
 
   useEffect(() => {
@@ -184,12 +212,11 @@ export default function Dashboard() {
       })
       setTimeout(() => setLogSuccess(false), 3000)
       loadChildData(selectedChild.id)
-    } catch (e: unknown) { 
-      const error = e as any
-      const errorMsg = error?.response?.data?.detail || error?.message || 'Kayıt ekleme başarısız'
+    } catch (e: unknown) {
+      const errorMsg = formatApiError(e, 'Kayıt ekleme başarısız')
       setLogError(errorMsg)
       setTimeout(() => setLogError(''), 5000)
-      console.error(e) 
+      console.error(e)
     }
     finally { setLogSaving(false) }
   }
@@ -215,8 +242,7 @@ export default function Dashboard() {
       setReminders([...reminders, res.data])
       setReminderForm({ title: '', reminder_type: 'general', remind_at: '', recur_type: 'none' })
     } catch (e: unknown) {
-      const error = e as any
-      const errorMsg = error?.response?.data?.detail || error?.message || 'Hatırlatıcı ekleme başarısız'
+      const errorMsg = formatApiError(e, 'Hatırlatıcı ekleme başarısız')
       setReminderError(errorMsg)
       setTimeout(() => setReminderError(''), 5000)
       console.error(e)
@@ -797,6 +823,7 @@ export default function Dashboard() {
                         <input value={logForm.communication_function}
                           onChange={e => setLogForm({ ...logForm, communication_function: e.target.value })}
                           placeholder="Fonksiyon (istek, reddetme, yorum, vb.)"
+                          maxLength={50}
                           style={{ width: '100%', marginTop: 10, padding: '10px 14px', borderRadius: 10, border: '2px solid #E5E7EB', fontSize: 13, outline: 'none' }}
                         />
                       </div>

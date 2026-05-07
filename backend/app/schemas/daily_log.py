@@ -19,7 +19,7 @@ class DailyLogCreate(BaseModel):
     aggression_duration_minutes: Optional[float] = Field(None, ge=0, le=1440)
     aggression_trigger: Optional[str] = None
     communication_mode: Optional[str] = Field(None, pattern=r"^(verbal|non_verbal|mixed)$")
-    communication_function: Optional[str] = Field(None, max_length=100)
+    communication_function: Optional[str] = Field(None, max_length=50)
     communication_effectiveness: Optional[int] = Field(None, ge=1, le=5)
     antecedent: Optional[str] = None
     behavior: Optional[str] = None
@@ -43,7 +43,7 @@ class DailyLogUpdate(BaseModel):
     aggression_duration_minutes: Optional[float] = Field(None, ge=0, le=1440)
     aggression_trigger: Optional[str] = None
     communication_mode: Optional[str] = Field(None, pattern=r"^(verbal|non_verbal|mixed)$")
-    communication_function: Optional[str] = Field(None, max_length=100)
+    communication_function: Optional[str] = Field(None, max_length=50)
     communication_effectiveness: Optional[int] = Field(None, ge=1, le=5)
     antecedent: Optional[str] = None
     behavior: Optional[str] = None
