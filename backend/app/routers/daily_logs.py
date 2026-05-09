@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, DataError, SQLAlchemyError
 from typing import List
 from datetime import date
 import logging
@@ -28,13 +28,13 @@ def create_log(data: DailyLogCreate, db: Session = Depends(get_db), current_user
         db.commit()
         db.refresh(log)
         return log
-    except IntegrityError as exc:
+    except (IntegrityError, DataError) as exc:
         db.rollback()
-        raise HTTPException(status_code=400, detail="Kayıt doğrulama hatası veya tekrarlı kayıt.") from exc
+        raise HTTPException(status_code=400, detail="Gonderilen kayit alanlarindan biri gecersiz.") from exc
     except SQLAlchemyError as exc:
         db.rollback()
-        logger.error(f"create_log db hatası: {exc}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Günlük kayıt kaydedilemedi (veritabanı hatası).") from exc
+        logger.error("create_log veritabani hatasi", exc_info=True)
+        raise HTTPException(status_code=500, detail="Kayit olusturulamadi.") from exc
 
 @router.get("/child/{child_id}", response_model=List[DailyLogResponse])
 def get_logs(child_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
@@ -61,13 +61,13 @@ def update_log(log_id: int, data: DailyLogUpdate, db: Session = Depends(get_db),
         db.commit()
         db.refresh(log)
         return log
-    except IntegrityError as exc:
+    except (IntegrityError, DataError) as exc:
         db.rollback()
-        raise HTTPException(status_code=400, detail="Güncelleme doğrulama hatası.") from exc
+        raise HTTPException(status_code=400, detail="Guncelleme alanlarindan biri gecersiz.") from exc
     except SQLAlchemyError as exc:
         db.rollback()
-        logger.error(f"update_log db hatası: {exc}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Günlük kayıt güncellenemedi (veritabanı hatası).") from exc
+        logger.error("update_log veritabani hatasi", exc_info=True)
+        raise HTTPException(status_code=500, detail="Kayit guncellenemedi.") from exc
 
 @router.delete("/{log_id}")
 def delete_log(log_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):

@@ -7,6 +7,8 @@ import api from './client'
 export const sendChatMessage = (childId: number, message: string) =>
   api.post(`/ai/chat/${childId}`, { message })
 
+
+//stream fonksiyonu
 export const streamAdvisorMessage = (
   childId: number,
   message: string,

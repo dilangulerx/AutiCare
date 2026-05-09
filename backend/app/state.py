@@ -67,6 +67,7 @@ class AutiCareState(TypedDict):
     human_reviewed_output: Optional[str]
     parallel_results: Optional[Dict[str, Any]]
     confidence_score: Optional[float]
+    user_role: str
 
 
 class TaskConfig(TypedDict):
@@ -140,6 +141,7 @@ def init_state(
     task_type: str,
     logs_data: Optional[List[Dict]] = None,
     query: Optional[str] = None,
+    user_role: str = "parent",
 ) -> AutiCareState:
 
     return AutiCareState(
@@ -171,4 +173,5 @@ def init_state(
         human_reviewed_output=None,
         parallel_results=None,
         confidence_score=None,
+        user_role=user_role,
     )
