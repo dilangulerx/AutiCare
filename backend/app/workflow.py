@@ -217,6 +217,7 @@ class AutiCareWorkflowExecutor:
         query: Optional[str] = None,
         streaming: bool = False,
         workflow_id: Optional[str] = None,
+        user_role: str = "parent",
     ) -> Dict[str, Any]:
         """
         İş Akışını Çalıştır
@@ -244,6 +245,7 @@ class AutiCareWorkflowExecutor:
             task_type=task_type,
             logs_data=logs_data,
             query=query,
+            user_role=user_role,
         )
         
         # Metadata başlat

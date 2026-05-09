@@ -215,6 +215,7 @@ async def execute_workflow(
             query=request.query,
             streaming=request.streaming,
             workflow_id=request.workflow_id,
+            user_role=getattr(current_user, 'role', 'parent'),
         )
         
         end_time = datetime.now()

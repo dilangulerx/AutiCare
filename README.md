@@ -75,85 +75,33 @@ With AutiCare, parents and caregivers can:
 
 ---
 
-## Agent and Workflow Architecture
+## 🤖 Advanced Agentic AI Architecture
 
-The AI layer uses a hybrid architecture:
+AutiCare utilizes a state-of-the-art hybrid AI architecture combining **LangGraph**, **CrewAI**, and **MCP** to provide safe, dynamic, and expert-level analysis.
 
-1. **LangGraph** handles workflow orchestration and route decisions
-2. **CrewAI** delegates specialized tasks to domain agents
-3. **HITL** is used for critical outputs requiring human review
-4. After approval/rejection, the workflow resumes from checkpoint
+### 1. LangGraph: The Orchestrator (The Brain) 🧠
+LangGraph acts as the central decision-making engine for all AI operations.
+- **Dynamic Routing:** When a request comes in (e.g., "analyze this data" or "generate a report"), LangGraph analyzes the user's intent and dynamically decides the execution path.
+- **Search Integration:** If the request requires up-to-date knowledge, it routes to a web search node before analysis.
+- **Human-in-the-Loop (HITL):** LangGraph calculates a confidence score. If the score is low or the task involves medical/therapy advice, the workflow is paused (`interrupt_before=["human_review"]`). It waits for a specialist's approval before returning the result to the user.
 
-### LangGraph Flow (Summary)
+### 2. CrewAI: The Domain Experts (The Workers) 👷‍♂️
+Once LangGraph decides *what* needs to be done, **CrewAI** is responsible for *doing* it. CrewAI manages a team of specialized AI agents:
+- `BehavioralAnalystAgent`: Analyzes behavior trends.
+- `AnomalyDetectorAgent`: Detects unusual deviations in sleep, aggression, etc.
+- `TherapyAdvisorAgent`: Recommends therapy activities.
+- `ReportGeneratorAgent`: Synthesizes the weekly reports.
+- `LiteratureReviewAgent`: Searches for the latest academic evidence.
+Instead of a single AI model trying to do everything, these specialized agents collaborate, share context, and produce highly accurate, domain-specific outputs.
 
-`analyze_intent -> (search_information or prepare_crew_tasks) -> execute_crew_tasks -> process_analysis -> (human_review or generate_output) -> END`
+### 3. MCP (Model Context Protocol): The External Bridge 🌉
+AutiCare features a native **MCP Server** integration.
+- **What it does:** MCP allows external AI assistants (like the **Claude Desktop App**) to securely connect to the AutiCare database in real-time.
+- **How it works:** Instead of relying on pre-compiled reports, you can ask Claude directly: *"Get the last 7 days of logs for Ali."* Claude will use the custom MCP tools (`get_child_logs`, `query_child_metrics`) to fetch live data from your database and generate insights on the fly.
+- **Security:** Tool calls are never direct DB queries. The MCP bridge enforces strict ownership checks (`parent_id`, `child_id`) so users can only access their own children's data.
 
-Key capabilities:
-
-- Task-driven dynamic routing (`report`, `chat`, `anomaly`, `analysis`, `deep_analysis`, `literature_review`, `parent_support`)
-- `interrupt_before=["human_review"]` for critical output gating
-- Checkpoint resume via workflow `thread_id`
-
-### CrewAI Agents
-
-- `BehavioralAnalystAgent`: behavior trend analysis
-- `AnomalyDetectorAgent`: anomaly and deviation detection
-- `TherapyAdvisorAgent`: therapy/activity recommendations
-- `ReportGeneratorAgent`: weekly report synthesis
-- `ConversationalAgent`: parent-facing Q&A support
-- `LiteratureReviewAgent`: up-to-date academic evidence search
-- `ParentSupportAgent`: empathetic parent guidance
-- `DataAnalystAgent`: advanced correlation and deep data analysis
-
-### Crew Types
-
-- `analysis`
-- `anomaly`
-- `recommendations`
-- `report`
-- `chat`
-- `deep_analysis`
-- `literature_review`
-- `parent_support`
-
----
-
-## MCP + Streaming Chat Architecture (Implemented)
-
-AutiCare now includes an MCP integration layer that can be used in two modes:
-
-1. **HTTP bridge mode (inside FastAPI)** for app/frontend usage
-2. **Native MCP stdio mode** for external MCP-capable agent runtimes
-
-### What Was Added
-
-- `backend/app/services/mcp_server.py`
-  - `AutiCareMCPBridge` with ownership-safe tool methods
-  - Optional FastMCP stdio server builder (`run_stdio_server`)
-- `backend/app/routers/mcp.py`
-  - `/mcp/tools`, `/mcp/call`, `/mcp/advisor`, `/mcp/advisor/stream`
-- `backend/run_mcp_server.py`
-  - Launches native MCP stdio server
-- `frontend/src/api/ai.ts`
-  - `streamAdvisorMessage(...)` SSE client helper
-- `frontend/src/pages/Dashboard.tsx`
-  - AI chat now consumes streaming advisor endpoint with fallback to legacy endpoint
-
-### End-to-End Chat Flow (Current)
-
-1. Parent sends message from Dashboard chat panel
-2. Frontend opens SSE connection to `/mcp/advisor/stream`
-3. Backend uses MCP bridge tools (`query_child_metrics`, `generate_therapy_brief`, etc.)
-4. Response is streamed in chunks (`start` -> `chunk` -> `done`)
-5. UI appends chunks live
-6. If SSE fails, frontend falls back to `POST /ai/chat/{child_id}`
-
-### Security Model
-
-- Tool calls are never direct DB access from the LLM side.
-- Every MCP tool call enforces ownership check (`parent_id`, `child_id`).
-- Unauthorized access returns `403`.
-- Invalid tool inputs return `400`.
+### End-to-End Flow
+`Intent Analysis` ➡️ `Information Search (if needed)` ➡️ `CrewAI Multi-Agent Analysis` ➡️ `Human Review (if critical)` ➡️ `Final Output`
 
 ---
 
@@ -377,11 +325,6 @@ docker exec -it autism_db mysql -u root -prootpassword autism_tracker
 
 ## Screenshots
 
-You can add your screenshots using this section:
-
-
-## Screenshots
-
 ### Login & Register
 | Login Page | Register Page |
 |------------|---------------|
@@ -401,29 +344,33 @@ You can add your screenshots using this section:
 | ![Daily Record 1](./docs/images/gunlukKayit1.png) | ![Daily Record 2](./docs/images/gunlukKayit2.png) | ![Daily Record 3](./docs/images/gunlukKayit3.png) |
 
 ### AI Features (Artificial Intelligence Features)
-> Chat with the AI Assistant and AI Approval Panel workflow.
+> Advanced AI-driven insights, chat, and expert approval workflows.
 
-#### AI Assistant
+#### AI Assistant (Chat)
 ![AI Assistant](./docs/images/chat.png)
+
+#### AI Reports & Analysis
+| Report List | Report Detail |
+|:---:|:---:|
+| ![AI Report 1](./docs/images/rapor1.png) | ![AI Report 2](./docs/images/raporr2.png) |
+
+#### AI Approval Panel (HITL)
+![AI Approval](./docs/images/aiOnay.png)
+
+#### MCP Integration (Claude Desktop)
+> Real-time data access for external AI assistants via Model Context Protocol.
+
+| Claude Interaction 1 | Claude Interaction 2 |
+|:---:|:---:|
+| ![Claude 1](./docs/images/claude1.png) | ![Claude 2](./docs/images/claude2.png) |
 
 ### Reminders
 ![Reminders](./docs/images/hatirlatici.png)
 
 ### Settings
-> Profile information, password change and appearance settings.
+> Profile management, security, and application preferences.
 
 ![Settings](./docs/images/settings.png)
-
-### AI Features (Artificial Intelligence Features)
-> AI Reports and AI Approval Panel workflow.
-
-#### AI Reports
-| Report List | Report Detail |
-|:---:|:---:|
-| ![AI Report 1](./docs/images/rapor1.png) | ![AI Report 2](./docs/images/raporr2.png) |
-
-#### AI Approval Panel
-![AI Approval](./docs/images/aiOnay.png)
 
 ---
 

@@ -294,7 +294,6 @@ export default function Dashboard() {
       setSettingsSaving(false)
     }
   }
- //önce streaming MCP endpoint’ine gidiyor
   const handleSendChat = async () => {
     if (!selectedChild || !chatInput.trim()) return
     const userMessage = chatInput.trim()
@@ -302,55 +301,35 @@ export default function Dashboard() {
     setChatMessages(prev => [...prev, { role: 'user', text: userMessage }])
     setChatLoading(true)
 
-    setChatMessages(prev => [...prev, { role: 'ai', text: '' }])
+    setChatMessages(prev => [...prev, { role: 'ai', text: 'Düşünüyor... (Bu işlem araştırma yaptığı için biraz sürebilir)' }])
 
     try {
-      chatStreamCleanupRef.current = streamAdvisorMessage(
-        selectedChild.id,
-        userMessage,
-        {
-          onChunk: (chunkText) => {
-            setChatMessages(prev => {
-              const next = [...prev]
-              const last = next[next.length - 1]
-              if (last && last.role === 'ai') {
-                last.text = `${last.text}${chunkText}`
-              }
-              return next
-            })
-          },
-          onDone: () => {
-            setChatLoading(false)
-          },
-          onError: async () => {
-            // SSE başarısızsa mevcut klasik endpoint'e geri dön.
-            try {
-              const res = await sendChatMessage(selectedChild.id, userMessage)
-              setChatMessages(prev => {
-                const next = [...prev]
-                const last = next[next.length - 1]
-                if (last && last.role === 'ai') {
-                  last.text = res.data.response
-                }
-                return next
-              })
-            } catch {
-              setChatMessages(prev => {
-                const next = [...prev]
-                const last = next[next.length - 1]
-                if (last && last.role === 'ai') {
-                  last.text = 'Bir hata oluştu, tekrar deneyin.'
-                }
-                return next
-              })
-            } finally {
-              setChatLoading(false)
-            }
-          },
+      const { chatWithAssistant } = await import('../api/ai')
+      const res = await chatWithAssistant(selectedChild.id, userMessage)
+      
+      setChatMessages(prev => {
+        const next = [...prev]
+        const last = next[next.length - 1]
+        if (last && last.role === 'ai') {
+          // If the workflow returns human review status, notify the user
+          if (res.needs_human_review && res.human_review_status === 'pending') {
+            last.text = 'Yanıtım bir uzmanın onayına sunuldu. Onaylandıktan sonra görüntülenebilecektir.'
+          } else {
+            last.text = res.output || 'Yanıt alınamadı.'
+          }
         }
-      )
+        return next
+      })
     } catch {
-      setChatMessages(prev => [...prev, { role: 'ai', text: 'Bir hata oluştu, tekrar deneyin.' }])
+      setChatMessages(prev => {
+        const next = [...prev]
+        const last = next[next.length - 1]
+        if (last && last.role === 'ai') {
+          last.text = 'Bir hata oluştu, tekrar deneyin.'
+        }
+        return next
+      })
+    } finally {
       setChatLoading(false)
     }
   }

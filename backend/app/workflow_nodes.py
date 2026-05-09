@@ -44,6 +44,9 @@ async def analyze_intent_node(state: AutiCareState) -> AutiCareState:
     - Çocuk: {state['child_name']} (ID: {state['child_id']})
     - Görev Türü: {task_config['description']}
     - İstek: {state.get('current_query', 'Otomatik görev')}
+    - Kullanıcı Rolü: {state.get('user_role', 'parent')}
+    
+    Çok Önemli Kural: Eğer kullanıcı rolü 'parent' (ebeveyn) ise KESİNLİKLE tıbbi tavsiye veya ilaç önerisi verme. Sadece günlük rutine dayalı zararsız tavsiyeler ver. Eğer rol 'admin' (uzman) ise bilimsel tıbbi/ilaç önerileri verebilirsin.
     
     Buna göre uygun CrewAI görevlerini belirle.
     """
@@ -214,6 +217,7 @@ async def execute_crew_tasks_node(state: AutiCareState) -> AutiCareState:
             child_name=state["child_name"],
             logs_text=logs_text,
             query=state.get("current_query"),
+            user_role=state.get("user_role", "parent"),
         )
         
         if result.get("success"):
@@ -299,6 +303,24 @@ async def generate_final_output_node(state: AutiCareState) -> AutiCareState:
     
     # Başlık
     task_type = state["current_task"]
+    
+    # Sohbet ve destek görevlerinde sade yanıt döndür
+    if task_type in ("chat", "parent_support"):
+        output = ""
+        if state.get("human_reviewed_output"):
+            output = state["human_reviewed_output"]
+        elif state.get("analysis_result"):
+            output = state["analysis_result"].get("raw_output") or state["analysis_result"].get("output") or str(state["analysis_result"])
+            
+        if state.get("human_review_notes"):
+            output = f"👤 Uzman Notu: {state['human_review_notes']}\n\n{output}"
+            
+        state["final_output"] = output
+        state["metadata"]["processing_steps"].append("final_generation")
+        state["should_end"] = True
+        logger.info(f"✓ Chat çıktısı oluşturuldu")
+        return state
+        
     output_parts.append(f"=== {state['child_name']} için {task_type.upper()} Raporu ===\n")
     
     # İnsan onayı durumunu
@@ -315,7 +337,12 @@ async def generate_final_output_node(state: AutiCareState) -> AutiCareState:
     
     # Analiz sonuçları
     if state.get("analysis_result"):
-        output_parts.append(f" Analiz Sonuçları:\n{json.dumps(state['analysis_result'], ensure_ascii=False, indent=2)}\n")
+        if isinstance(state["analysis_result"], dict) and "output" in state["analysis_result"]:
+            output_parts.append(f" Analiz Sonuçları:\n{state['analysis_result']['output']}\n")
+        elif isinstance(state["analysis_result"], dict) and "raw_output" in state["analysis_result"]:
+            output_parts.append(f" Analiz Sonuçları:\n{state['analysis_result']['raw_output']}\n")
+        else:
+            output_parts.append(f" Analiz Sonuçları:\n{json.dumps(state['analysis_result'], ensure_ascii=False, indent=2)}\n")
     
     # Anormallikler
     if state.get("anomalies"):
@@ -428,8 +455,10 @@ async def search_information_node(state: AutiCareState) -> AutiCareState:
         task = state["current_task"]
         child_name = state["child_name"]
         
-        if task in ("report", "deep_analysis"):
+        if task in ("report", "deep_analysis", "chat"):
             search_queries.append(f"autism behavioral intervention strategies children")
+            if task == "chat" and state.get("current_query"):
+                search_queries.append(f"autism {state['current_query']} therapy recommendations")
             # Anomali varsa spesifik arama
             if state.get("anomalies"):
                 for anomaly in state["anomalies"][:2]:
@@ -635,16 +664,12 @@ def route_by_intent(state: AutiCareState) -> str:
     logs = state.get("logs_data") or []
     
     # Araştırma gerektiren görevler
-    if task in ("literature_review", "deep_analysis"):
+    if task in ("literature_review", "deep_analysis", "chat"):
         return "search_information"
     
     # Rapor görevi — yetersiz veri varsa araştır
     if task == "report" and len(logs) < 5:
         return "search_information"
-    
-    # Chat — hızlı yanıt yolu
-    if task == "chat":
-        return "prepare_crew_tasks"
     
     # Diğer görevler — standart yol
     return "prepare_crew_tasks"

@@ -69,6 +69,7 @@ class AutiCareCrewManager:
         child_name: str,
         logs_text: str,
         query: Optional[str] = None,
+        user_role: str = "parent",
     ) -> Optional[Crew]:
         """
         Belirli bir amaç için CrewAI ekibi oluştur
@@ -141,6 +142,7 @@ class AutiCareCrewManager:
                 child_name,
                 logs_text,
                 query,
+                user_role,
             )
         
         # ── YENİ CREW TÜRLERİ ──
@@ -199,6 +201,7 @@ class AutiCareCrewManager:
                 child_name,
                 logs_text,
                 query,
+                user_role,
             )
         
         if not agents_list or not tasks_list:
@@ -268,6 +271,7 @@ class AutiCareCrewManager:
         child_name: str,
         logs_text: str,
         query: Optional[str] = None,
+        user_role: str = "parent",
     ) -> List[Task]:
         """
         Görevleri oluştur
@@ -296,6 +300,7 @@ class AutiCareCrewManager:
                 child_name=child_name,
                 logs_text=logs_text,
                 query=query or "",
+                user_role=user_role,
             )
             
             try:
@@ -328,6 +333,7 @@ class AutiCareCrewManager:
         child_name: str,
         logs_text: str,
         query: Optional[str] = None,
+        user_role: str = "parent",
     ) -> Dict[str, Any]:
         """
         CrewAI Ekipini Çalıştır
@@ -344,7 +350,7 @@ class AutiCareCrewManager:
         
         logger.info(f"🤖 Crew Çalıştırılıyor: {crew_type}")
         
-        crew = self.create_crew(crew_type, child_name, logs_text, query)
+        crew = self.create_crew(crew_type, child_name, logs_text, query, user_role)
         if not crew:
             return {
                 "success": False,

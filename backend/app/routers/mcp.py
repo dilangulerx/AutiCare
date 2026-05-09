@@ -465,15 +465,20 @@ def _resolve_advisor_reply(
             "• 'Hatırlatıcı oluştur'"
         )
     else:
-        eye_val = avg.get("eye_contact")
-        comm_val = avg.get("communication_score")
-        agg_val = avg.get("aggression_level")
-        sleep_val = avg.get("sleep_hours")
-        fallback_reply = _build_progress_reply(child_name, log_count, eye_val, comm_val, agg_val, sleep_val)
+        fallback_reply = (
+            f"Üzgünüm, sorunuzu tam olarak anlayamadım.\n\n"
+            f"💡 {child_name} ile ilgili şu konularda size yardımcı olabilirim:\n"
+            "• 'Bu haftaki gelişimi nasıl?'\n"
+            "• 'Göz teması trendi'\n"
+            "• 'Uyku durumu'\n"
+            "• 'İletişim nasıl?'\n"
+            "• 'Terapi özeti'\n"
+            "• 'Hatırlatıcı oluştur'"
+        )
 
     return {
         "reply": fallback_reply,
-        "action": "weekly_summary",
+        "action": "fallback",
         "tool_result": weekly,
     }
 

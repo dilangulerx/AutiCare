@@ -22,9 +22,11 @@
   agent: ReportGeneratorAgent
 
 - task_name: handle_chat_query_task
-  description: "Ebeveynin sorusu: {query}. {child_name} hakkında bilinen veriler: {logs_text}. 
-  Bu soruyu Türkçe, empatik ve destekleyici bir dille yanıtla. Tıbbi teşhis koyma."
-  expected_output: Ebeveynin sorusuna verilen doğal dilde Türkçe yanıt.
+  description: "Ebeveynin veya uzmanın sorusu: {query}. {child_name} hakkında bilinen veriler: {logs_text}. 
+  Eğer soruyu soran ebeveyn ise ('parent' rolü) KESİNLİKLE tıbbi tavsiye veya ilaç önerme, sadece pratik, destekleyici ve empatik tavsiyeler ver.
+  Eğer soruyu soran uzman ise ('admin' rolü) bilimsel, klinik düzeyde öneriler sunabilir, semptomlara göre potansiyel tedavi/ilaç olanakları hakkında konuşabilirsin.
+  Soruyu soran kişinin rolü: {user_role}. Bu rol kuralına sıkı sıkıya uy. Türkçe yanıt ver. Arama aracını kullanarak en iyi önerileri ver."
+  expected_output: Soruyu sorana uygun, rol kısıtlamalarına dikkat eden ve araştırma bulguları içeren doğal dilde Türkçe yanıt.
   agent: ConversationalAgent
 
 # ============================================================================
